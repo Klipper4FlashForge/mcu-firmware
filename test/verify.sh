@@ -58,20 +58,31 @@ if ! cmp -s "$OURS" "$STOCK"; then
 fi
 echo "ok  cmp              0 differing bytes"
 
-# 5. every function at stock's own address, every instruction identical
+# 5. every function at stock's own address, every instruction identical.
+# relocmap prints its summary block first and a per-function listing after,
+# so keep the summary lines rather than the head or tail of the output.
 if [ -x "$ROOT/tools/relocmap.py" ]; then
-    out=$(cd "$ROOT" && MCU_WORK="$WORK" python3 tools/relocmap.py --all --limit 0 2>/dev/null | tail -n 20)
-    echo "$out" | grep -q 'CODE-DIFF 0' \
-        || { echo "$out" >&2; fail "relocmap reports code differences"; }
-    echo "ok  relocmap         $(echo "$out" | grep -o 'EXACT-AT-ADDR [0-9]*')"
+    out=$(cd "$ROOT" && MCU_WORK="$WORK" python3 tools/relocmap.py --all --limit 0 2>/dev/null)
+    sum=$(echo "$out" | grep -E '^(functions:|instruction-exact:|  (EXACT-AT-ADDR|LAYOUT-DIFF|LITERAL-DIFF|CODE-DIFF) +[0-9]+$)')
+    for k in LAYOUT-DIFF LITERAL-DIFF CODE-DIFF; do
+        echo "$sum" | grep -qE "^  $k +0$" \
+            || { echo "$sum" >&2; fail "relocmap reports $k"; }
+    done
+    echo "$sum" | grep -q '(100.0%)' \
+        || { echo "$sum" >&2; fail "relocmap is not at 100% instructions"; }
+    exact=$(echo "$sum" | grep -oE 'EXACT-AT-ADDR +[0-9]+' | grep -oE '[0-9]+')
+    total=$(echo "$sum" | grep -oE '^functions: [0-9]+' | grep -oE '[0-9]+')
+    echo "ok  functions        $exact/$total at stock's own address"
+    echo "ok  instructions     $(echo "$sum" | grep -oE '[0-9]+/[0-9]+ instructions \(100\.0%\)')"
 fi
 
 # 6. all 54 command handlers instruction-identical
 if [ -x "$ROOT/tools/cmpfuncs.py" ]; then
-    out=$(cd "$ROOT" && MCU_WORK="$WORK" python3 tools/cmpfuncs.py 2>/dev/null | tail -n 3)
-    echo "$out" | grep -qE 'DIFF 0 +NOSYM 0' \
-        || { echo "$out" >&2; fail "cmpfuncs reports differing handlers"; }
-    echo "ok  handlers         $(echo "$out" | grep -o 'SAME [0-9]*')"
+    out=$(cd "$ROOT" && MCU_WORK="$WORK" python3 tools/cmpfuncs.py 2>/dev/null)
+    tally=$(echo "$out" | grep -E '^SAME [0-9]+ +DIFF [0-9]+ +NOSYM [0-9]+$')
+    echo "$tally" | grep -qE 'DIFF 0 +NOSYM 0' \
+        || { echo "$tally" >&2; fail "cmpfuncs reports differing handlers"; }
+    echo "ok  handlers         $(echo "$tally" | grep -oE '^SAME [0-9]+' | grep -oE '[0-9]+')/$(echo "$tally" | grep -oE '^SAME [0-9]+' | grep -oE '[0-9]+') instruction-identical"
 fi
 
 echo
