@@ -66,6 +66,24 @@ matter and is still load-bearing: dropping it lets both inline into
         // spelling FlashForge used to get there is not known.
 ```
 
+### TIM_TimeBaseInit and the one `noipa` that is left
+
+`TIM_TimeBaseInit()` fills a file-static `TIM_TimeBaseInitType` by
+calling `TIM_InitTimBaseStruct()` and then overwriting four of its
+eleven fields. GCC's interprocedural analysis of the callee changes how
+the caller schedules, so `TIM_InitTimBaseStruct` carries
+`__attribute__((noipa))`. It is the analysis half that matters, not the
+inlining: `noinline` alone and `noinline, noclone` both cost the same 6
+bytes, and those 6 bytes are one `mov r1, r4` — the struct pointer for
+the tail call — scheduled two instructions too early.
+
+`TIM_InitTimeBase` had the same attribute and needs nothing at all, not
+even `noinline`; it is gone. Measured and rejected for the remaining
+one: all 24 orders of the wrapper's four assignments (best 4 bytes), and
+dropping the wrapper's redundant `ClkDiv = 0` / `CntMode = 0` — which
+`TIM_InitTimBaseStruct` has already done — at 6,203 bytes, so those two
+redundant stores are stock's.
+
 ## lib/n32g45x/n32g45x_tim.c — TIM_ETRClockMode2Config
 
 ```
@@ -90,11 +108,26 @@ matter and is still load-bearing: dropping it lets both inline into
     // followed by a separate read-set-write of the channel config register,
     // which is what puts a paired bic/orr around each field in the image.
     //
-    // Each field is read one group ahead of the field it configures, and the
-    // locals are int: the signed intermediate keeps a conversion of its own in
-    // the tree, which is what fixes the order IRA colours the fields in and so
-    // holds the working set to three fields and {r4, r5}.
+    // Each field is read into an int local immediately before the pair that
+    // applies it.  The locals being int matters -- the signed intermediate
+    // keeps a conversion of its own in the tree, which fixes the order IRA
+    // colours the fields in and holds the working set to {r4, r5}.
 ```
+
+**Corrected.** The fields are *not* read a group ahead. They used to be
+written that way, with `circ`, `prio` and `m2m` hoisted into a clump and
+an `if (channel) X else X` at the `TXNUM` store making up the
+difference; that combination reproduced the bytes but read as
+scaffolding. Each declaration beside its own field, and no conditional,
+reproduces them too. 96 placements of the three declarations were built:
+three score zero, and one of the three is the uniform spelling.
+
+The general point, which is worth more than the site: an identical-armed
+conditional and a moved declaration do the same job. Both put a
+register-defining insn at a chosen point in the RTL chain without
+emitting an instruction. The declaration is source; the conditional is
+not. **Before writing a placeholder, look for a declaration already in
+the function that can move to where the placeholder would go.**
 
 ## lib/n32g45x/n32g45x_dma.c — DMA_GetIntStatus / DMA_GetFlagStatus
 
@@ -162,13 +195,11 @@ matter and is still load-bearing: dropping it lets both inline into
 
 ## src/endstop.c — command_endstop_home
 
-```
-        // ff_eddy_pin_state is set through a pointer whose
-        // provenance the compiler cannot follow back to the symbol: that
-        // makes the store alias e->ts, which keeps the post-reload scheduler
-        // from sinking "e->ts = NULL" past it.  Writing the flag by name
-        // lets the scheduler swap the last two stores.
-```
+Superseded. The flag used to be stored through a laundered pointer so
+that the store would alias `e->ts` and stop the post-reload scheduler
+sinking `e->ts = NULL` past it. Declaring `ff_eddy_pin_state` a
+`volatile bool` does the same job by itself; the store is written by
+name now. See "why `ff_eddy_pin_state` has to be a `bool`" below.
 
 ## src/endstop.c — command_endstop_query_state
 
@@ -195,6 +226,21 @@ matter and is still load-bearing: dropping it lets both inline into
     // blocks (the AFL write and the POTYPE write) relative to each other and
     // to the pullup tail; these weights reproduce stock's block order.
 ```
+
+Retried and rejected since: writing the low half first, `if (pos < 8)`
+with the two blocks swapped, costs 50 bytes, and selecting the AF
+register through a pointer instead of branching costs 9,026. The
+`__builtin_expect_with_probability` weights stand.
+
+Three constants in this function were only constants, and naming them is
+free. `(volatile uint32_t *)0x40021014` is `&RCC->AHBENR`; naming it
+exposes a FlashForge bug, because the bit index beside it is computed
+from `APB2PERIPH_BASE`, so an APB2 enable bit is being written into the
+AHB enable register — bit 2 there is `SRAMEN`, and the GPIO clock this
+line looks like it enables is enabled elsewhere. `(mode & 0xffffffef)`
+is `mode & ~GPIO_MODE_OD`, and the test `- 1 < 2` on it is
+"is it one of the two output modes". `r->DS = (2 << shift)` is
+`GPIO_DC_8MA`.
 
 ## Makefile — CFLAGS
 
@@ -253,6 +299,16 @@ matter and is still load-bearing: dropping it lets both inline into
            crtbegin.o's plain .bss (completed.1, object.0) comes first,
            and the receive/transmit buffers onward are already in order. */
 ```
+
+How much of the list is load-bearing was never measured until now, and
+the guess in the audit ("about half are inert") was wrong. A greedy
+one-at-a-time removal drops exactly one line, `*(.bss.tx_dma_active)`,
+which is gone; every other line costs bytes on its own. The run of 25
+consecutive `ff_eddy_*` lines is in declaration order and looks like it
+should fall out of the wildcard, but removing that block as a unit costs
+76 bytes and removing all 28 `ff_eddy_*` lines costs 128. The order is a
+genuine interleave across object files, and no arrangement of source can
+produce it.
 
 ## src/stm32/serial.c — the vector table tail
 
@@ -327,8 +383,13 @@ The ring copy is a plain loop, not `memcpy`: GCC turns it into the same
 `ldm`/`stm` sequence, but a loop leaves the function pure in GCC's early
 analysis, and the call heuristic does not mark a branch to a pure call
 cold. That is what keeps `ff_eddy_update`'s smoothing path in line
-rather than out of it. The `__section(".text.eddy_median")` places the
-function; it is ours, not FlashForge's.
+rather than out of it.
+
+The `__section(".text.eddy_median")` that used to sit on this function
+placed nothing and has been deleted. `ff_eddy_median` is the first
+function defined in `ff_eddy.c`, so `-ffunction-sections` and the
+script's plain `*(.text.*)` already put it where stock has it. It was
+left over from a stage when the `.text` block was written differently.
 
 ## src/ff_eddy.c — `ff_eddy_home_reset`
 
@@ -351,6 +412,14 @@ The `GPIO_InitType` lives in its own scope: with an addressable local in
 the outer scope GCC will not turn the trailing `ff_eddy_dma_init()` into
 a tail call.
 
+The TIM1 pointer used to be spelled `(TIM_Module *)((char *)NS_TIM8 -
+0x800)`, transcribed from the instruction that computes it. `NS_TIM1` is
+the same address and the same bytes. Nothing in this function needed the
+subtraction; the two `RCC_EnableAPB2PeriphClk` arguments, the DMA init
+struct's eight literals, the channel remap, the TIM DMA request and the
+three GPIO fields were bare hex for the same reason, and are all named
+now.
+
 ## src/ff_eddy.c — `ff_eddy_update`
 
 The two comparisons in the armed path are written threshold-first
@@ -371,6 +440,15 @@ gimplifier's early-return prediction of 66 %. `mad != 0` is tested first
 so bb-reorder's `prev_bb` tie-break places the `mad_limit` block after
 the saturating arm. `calibrated` is stored right after `have_filter`
 because sched2 emits those independent plain stores in source order.
+
+The `ff_eddy_mad` placeholder buys one free reference to
+`&ff_eddy_ring_pos`. Without it the pointer lands in r7 instead of
+stock's r6 and 21 bytes differ across the whole function — same
+instructions, same order, same size, one register apart. `volatile` on
+`ff_eddy_mad` is load-bearing here too: dropping it costs the same 21
+even though the variable is write-only and a plain global would keep the
+store alive, which is the opposite of what happened with
+`analog_in_value`.
 
 ## src/ff_eddy.c — `ff_eddy_rebaseline`
 
@@ -396,6 +474,21 @@ Each site needs exactly one free reference, and the currency is
 specific: A needs a use of `value`, C a use of `value - 1`, B a use of
 `thr` alone, D a use of `baseline` alone. `value == 0xffff` fails at A
 because fold rewrites it to `_1 == 65534`, which is C's currency.
+
+`DMA_Init` shows what to look for next here (see its section above): a
+*declaration* moved to the placeholder's position buys the same free
+reference and is real source. `ff_eddy_check_trigger` has no spare
+declaration to move — `value`, `hard`, `state`, `baseline` and `thr` are
+all read under `irq_disable()` and cannot move out of it — but that is
+the shape of the fix if one exists. The `ff_eddy_update` placeholder was
+swept that way and has none either: 96 placements of `devs`, `i`,
+`si, sj` and a split `mad` declaration all score the same 21 bytes.
+
+Also swept and rejected at A and C: both orders of the two counter
+resets, braced and unbraced `if (state)`, dropping the `if (state)`
+guard entirely (2,790 bytes — stock has the guard), and three spellings
+of `ff_eddy_value_bad` (`== 0 || > 0xffff`, `- 1 > 0xfffe`, a `uint16_t`
+round trip; the third costs 2,867).
 
 ## src/ff_eddy.c — the telemetry hypothesis is dead
 

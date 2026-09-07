@@ -212,7 +212,7 @@ command_tmcuart_send(uint32_t *args)
     }
     irq_disable();
     t->timer.waketime = timer_read_time() + timer_from_us(200);
-    sched_add_timer(&t->timer, 51);
+    sched_add_timer(&t->timer, FF_TIMER_TMCUART_SEND);
     irq_enable();
 }
 DECL_COMMAND(command_tmcuart_send, "tmcuart_send oid=%c write=%*s read=%c");

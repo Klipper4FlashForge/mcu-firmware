@@ -25,13 +25,14 @@ the tree indefensible as "FlashForge's source".
 | A2 | `src/generic/serial_irq.c` `serial_get_tx_byte` | `asm volatile("" : : "r"(npos) : "memory")` — orders the `transmit_pos` store ahead of the `writeb` | open, costs 4 bytes without it |
 | A3 | `src/ff_eddy.c` `ff_eddy_check_trigger` | four conditionals whose two arms are textually identical | open, see `PLAN.md` |
 | A4 | `src/ff_eddy.c` `ff_eddy_update` | one identical-armed conditional on `ff_eddy_ring_pos` | open |
-| A5 | `lib/n32g45x/n32g45x_dma.c` `DMA_Init` | one identical-armed conditional | open |
+| A5 | `lib/n32g45x/n32g45x_dma.c` `DMA_Init` | one identical-armed conditional | **fixed** — the shaping moved to two local declarations, 0 bytes |
 | A6 | `src/ff_eddy.c` ×2 | `value - 1 > 0xfffe` as a zero/overflow reject — not how a person writes that constant | **fixed** — `ff_eddy_value_bad()`, 0 bytes |
 | A7 | `src/stm32/gpio.c` | `extern volatile uint8_t ff_eddy_pin_state_v __asm__("ff_eddy_pin_state")` — an asm-label alias to get a second, volatile view of a variable already declared in a header | **fixed** — unnecessary once the flag is a `bool`, 0 bytes |
 | A9 | `src/ff_eddy.c` `ff_eddy_home_reset` | the entire function was a `naked` body of hand-written Thumb assembly standing in for six C assignments | **fixed** — six plain C assignments, 0 bytes; one `*(uint8_t *)&` cast remains |
-| A10 | `src/ff_eddy.c` | `__section(".text.eddy_median")` on `ff_eddy_median`, a magic section name that exists to place the function | open |
+| A10 | `src/ff_eddy.c` | `__section(".text.eddy_median")` on `ff_eddy_median`, a magic section name that exists to place the function | **fixed** — inert, deleted, 0 bytes |
 | A11 | `src/stm32/stm32f1.c` ×2, `lib/n32g45x/n32g45x_tim.c` ×1 | `__builtin_expect_with_probability(cond, 1, 0.6)` — a GCC-specific builtin, with a hand-tuned probability, used to steer block layout. No firmware author reaches for this | open |
 | A8 | `src/stm32/stm32f1.c` `armcm_main` | was `asm volatile("movs r3, #0\n msr primask, r3")`, an undeclared-clobber hand assembly of a CMSIS intrinsic | **fixed** — `__set_PRIMASK(0)`, 0 bytes |
+| A12 | `lib/n32g45x/n32g45x_tim.c` `TIM_InitTimBaseStruct` | `__attribute__((noipa))` — a GCC-only attribute that switches off interprocedural analysis of one function | open, costs 6 bytes without it |
 
 A3/A4's placeholders survive, but they now carry honest "NOT
 FLASHFORGE'S SOURCE" markers rather than compiler essays, and three of
@@ -39,6 +40,46 @@ the four read as sanity checks (`value < FF_EDDY_VALUE_MIN`,
 `(uint32_t)thr > value`, `value < baseline`) instead of arbitrary
 equalities — all at 0 bytes. The telemetry hypothesis that `PLAN.md`
 led with is now falsified; see `notes/compiler-shaping.md`.
+
+A5 is closed, and how it closed is the most useful thing in this file.
+The fake conditional was never the lever: what the schedule wanted was a
+*register-defining insn* at that point in the RTL chain, and `DMA_Init`
+already had three of them to spare — the `int circ` / `int prio` /
+`int m2m` reads of the init struct. They had been hoisted into a clump
+above the clear-then-set sequence they belong to. Putting each one back
+beside its own field, which is how the other six fields were already
+written, produces stock's schedule with no conditional at all. The
+function now reads as nine uniform three-line stanzas. Search: 96
+placements of the three declarations, three of which score zero.
+
+The lesson generalises: **when a placeholder is standing in for
+"something the scheduler needs here", look first for a declaration
+already in the function that can be moved there.** A declaration emits
+nothing, so moving one is free in the only sense that matters, and the
+result is source rather than scaffolding. The same sweep run against A4
+(96 placements of `devs`, `i`, `si, sj` and a split `mad`) found
+nothing: every one scored 21, so `ff_eddy_update` has no spare
+declaration to move and its placeholder stands.
+
+What A4's 21 bytes actually are, for whoever picks this up: stock keeps
+`&ff_eddy_ring_pos` in r6 for the whole of `ff_eddy_update` and we put
+it in r7. Nothing else differs — same instructions, same order, same
+size. The placeholder's folded-away read of `ff_eddy_ring_pos` is what
+tips IRA's preference. A source change that adds a *use* of that pointer
+without emitting an instruction is what is wanted, and no legal C
+spelling of one has been found. Also measured and rejected: dropping
+`volatile` from `ff_eddy_mad` (21 bytes with the placeholder in place —
+so unlike `analog_in_value`, this `volatile` is load-bearing).
+
+A3's four placeholders cost 14, 3, 7 and 10,366 bytes if simply
+deleted, and 14 for the first two together. The first one is the
+interesting one: without it stock's `state` sits in r4 and ours in r5,
+because in stock `value` is still live past the `if (state)` block. The
+third is only a 3-byte r2/r3 swap in the `ff_eddy_value_bad` test.
+Sweeps that found nothing: both counter-reset orders, braced and
+unbraced guards, dropping the `if (state)` guard, and three spellings of
+`ff_eddy_value_bad` (`== 0 || > 0xffff`, `- 1 > 0xfffe`, a `uint16_t`
+round-trip).
 
 A9 is closed, and the earlier "ruled out" verdict here was wrong. Two
 levers had never been varied together: the *type* of
@@ -51,12 +92,38 @@ plain C; the residue is one cast, and it is marked in the source. See
 `compiler-shaping.md` for the mechanism and for what the exhaustive
 search had actually covered.
 
+A10 was not load-bearing at all: `__section(".text.eddy_median")` did
+nothing. `ff_eddy_median` is the first function defined in `ff_eddy.c`,
+so `-ffunction-sections` plus the linker script's plain `*(.text.*)`
+already places it where stock has it. The attribute was left over from
+an earlier stage of the reconstruction, when the `.text` block was
+written differently. Deleted; 0 bytes.
+
+A12 is new to this list — it had been sitting in the tree unrecorded.
+Two functions in `n32g45x_tim.c` carried `__attribute__((noipa))`.
+`TIM_InitTimeBase` needs no attribute whatever, not even `noinline`;
+that one is gone. `TIM_InitTimBaseStruct` still needs it, and needs the
+*analysis* half specifically: `noinline` alone costs 6 bytes and
+`noinline, noclone` costs the same 6, so it is GCC's interprocedural
+modref information about the callee, not inlining or cloning, that
+`TIM_TimeBaseInit`'s schedule depends on. The 6 bytes are one
+`mov r1, r4` scheduled two instructions early. All 24 orders of the
+wrapper's four field assignments were tried (best 4); dropping the two
+assignments that `TIM_InitTimBaseStruct` has already made costs 6,203.
+The natural fix is probably structural — the wrapper is FlashForge's,
+not the SDK's, and in a separate translation unit there would be no
+interprocedural analysis to switch off — but it sits at the end of the
+TIM object's `.text`, so it cannot move without moving its address.
+
 Ruled out for A11: the builtins are load-bearing. Plain `if (pos & 8)`
 costs 47 bytes, `likely()` 42, a plain `pullup < 1` 42, and a plain
 `TIMx == NS_TIM1 || TIMx == NS_TIM8` 6,585. What is free is reshaping
 the code around them: the pull-up tail now reads
 `if (pullup > 0) … else if (pullup) …` instead of a `pullup < 1` test
-with an unreachable inner branch, at 0 bytes.
+with an unreachable inner branch, at 0 bytes. Retried since and also
+rejected: inverting the alternate-function branch so the low half reads
+first (`if (pos < 8)`, 50 bytes) and selecting the AF register through a
+pointer instead of branching (9,026).
 
 Measured and ruled out for A1: all 24 orderings of the four stores (best
 4 bytes), and `struct trsync * volatile ts` (10 bytes, worse).
@@ -83,10 +150,15 @@ FlashForge code — name them for what they are and keep them together.
   parallel to `src-y`.
 - `scripts/buildcommands.py`: the `KLIPPER_BUILD_VERSION` override and
   the `compress_dict()` ctypes shim onto a classic `libz`.
-- `src/generic/armcm_link.lds.S`: fifty hand-listed `*(.bss.<name>)`
-  lines imposing stock's variable order. About half of them are inert —
-  they restate link order x alphabetical, which is what the plain
-  wildcard already gives. See `compiler-shaping.md` for which parts are
+- `src/generic/armcm_link.lds.S`: fifty-odd hand-listed `*(.bss.<name>)`
+  lines imposing stock's variable order. The claim once made here — that
+  about half are inert — is wrong, and was never measured. A greedy
+  one-at-a-time removal drops exactly one line, `*(.bss.tx_dma_active)`,
+  now deleted; every other line costs bytes. Nor is the run of 25
+  `ff_eddy_*` lines derivable from declaration order: removing that block
+  as a unit costs 76 bytes, and all 28 `ff_eddy_*` lines cost 128. The
+  order really is an interleave across object files that no link order
+  produces. See `compiler-shaping.md` for which parts are
   derivable and which are not. The `.data` block is **fixed**: it is
   upstream's `*(.data .data.*)` again. The invented `.data.ff000` /
   `.data.ff10x` section names are **fixed**: the linker script now names
@@ -127,9 +199,6 @@ damage rather than as decisions.
   citing `eBoard.hex 0x080115ec` and admitting it was not reconstructed.
 - `src/generic/armcm_timer.c`: `sched_add_timer(&wrap_timer, 0)` under
   "Tag unknown: … no stock call site could be attributed to this one."
-- `sched_add_timer()`'s new `tag` argument is passed as bare numbers at
-  fourteen call sites — 0, 1, 14, 15, 22, 23, 31, 45, 48, 56, 98 — with
-  no enumeration and no names.
 - `src/basecmd.c`: `FF_MCU_YEAR` / `FF_MCU_DATE` / `FF_MCU_VERSION` under
   "levelBoard.hex reports these three constants verbatim".
 
@@ -203,6 +272,51 @@ tree. None of it cost a single byte.
   C source → the linker script names the four variables, as it already
   did for `.bss`. `ff_eddy_mad_limit` became a plain global, which is
   what had needed the attribute.
+
+- `DMA_Init`: `if (channel) { channel->TXNUM = n; } else { ... }`, the
+  same statement in both arms, gone. Three local declarations moved
+  beside the fields they configure; the function is now nine identical
+  stanzas.
+
+- `ff_eddy_median`: `__section(".text.eddy_median")` deleted. It placed
+  nothing.
+
+- `TIM_InitTimeBase`: `__attribute__((noipa))` deleted. It constrained
+  nothing.
+
+- `sched_add_timer()`'s tag argument was fourteen bare integers. Now
+  `FF_TIMER_*` in `sched.h`, beside the declaration that takes them.
+  The numbers are stock's; the names are ours, each read off the call
+  site it identifies, and `0` — which two unrelated sites share — is
+  `FF_TIMER_UNTAGGED`.
+
+**Numbers that were only numbers**
+
+All of these are the same integer under a name the vendor header already
+had, or now has beside its neighbours. 0 bytes, every one.
+
+- `gpio_peripheral`: `(volatile uint32_t *)0x40021014` → `&RCC->AHBENR`.
+  Naming it also makes a FlashForge bug legible: the bit index is
+  computed from `APB2PERIPH_BASE`, so it is an APB2 enable bit being
+  written into the AHB enable register. The GPIO clocks that this line
+  looks like it enables are enabled elsewhere; as written it sets
+  `SRAMEN` and nothing else.
+- `gpio_peripheral`: `if ((mode & 0xffffffef) - 1 < 2)` → a `GPIO_MODE_OD`
+  mask and a comparison against the two output modes by name; the
+  open-drain bit is extracted with the same constant instead of
+  `(mode & 0x1f) >> 4`. `r->DS = (2 << shift)` → `GPIO_DC_8MA`.
+- `ff_eddy_counter_init`: `(TIM_Module *)((char *)NS_TIM8 - 0x800)` →
+  `NS_TIM1`. The two macros differ by exactly 0x800; the subtraction was
+  transcribed from the instruction that computes it.
+- `ff_eddy_dma_init` and `ff_eddy_counter_init`: the DMA init struct's
+  eight literal fields, the channel request remap, the two APB2 clock
+  bits, the TIM DMA request and the three GPIO fields are all named now
+  (`DMA_MODE_CIRCULAR`, `DMA_PRIORITY_HIGH`, `DMA_REMAP_TIM8_UP`,
+  `RCC_APB2_PERIPH_TIM8`, `TIM_DMA_UPDATE`, `GPIO_PIN_0`, `GPIO_DC_8MA`,
+  `GPIO_AF8_TIM8`, …), with the definitions added to
+  `lib/n32g45x/include/n32g45x.h` in the style of the ones already there.
+- `ff_eddy_pin_init`: `1 << 1` twice → `GPIO_PIN_1`, `2` → `GPIO_DC_8MA`.
+- `ff_eddy_value_bad()` returns `bool` rather than `int`.
 
 **Things that should not have been in the tree at all**
 

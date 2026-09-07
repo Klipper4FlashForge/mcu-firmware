@@ -244,7 +244,7 @@ command_queue_step(uint32_t *args)
         s->flags = flags;
         move_queue_push(&m->node, &s->mq);
         stepper_load_next(s);
-        sched_add_timer(&s->time, 22);
+        sched_add_timer(&s->time, FF_TIMER_STEPPER_QUEUE);
     }
     irq_enable();
 }

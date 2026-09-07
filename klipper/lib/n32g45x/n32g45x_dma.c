@@ -44,11 +44,7 @@ DMA_Init(DMA_ChannelType *channel, DMA_InitType *DMA_InitParam)
     channel->CHCFG &= ~((uint32_t)0x0010);
     channel->CHCFG |= dir;
     int bufsize = DMA_InitParam->BufSize;
-    if (channel) {
-        channel->TXNUM = bufsize;
-    } else {
-        channel->TXNUM = bufsize;
-    }
+    channel->TXNUM = bufsize;
     int pinc = DMA_InitParam->PeriphInc;
     channel->CHCFG &= ~((uint32_t)0x0040);
     channel->CHCFG |= pinc;
@@ -62,12 +58,12 @@ DMA_Init(DMA_ChannelType *channel, DMA_InitType *DMA_InitParam)
     channel->CHCFG &= ~((uint32_t)0x0c00);
     channel->CHCFG |= msize;
     int circ = DMA_InitParam->CircularMode;
-    int prio = DMA_InitParam->Priority;
     channel->CHCFG &= ~((uint32_t)0x0020);
-    int m2m = DMA_InitParam->Mem2Mem;
     channel->CHCFG |= circ;
+    int prio = DMA_InitParam->Priority;
     channel->CHCFG &= ~((uint32_t)0x3000);
     channel->CHCFG |= prio;
+    int m2m = DMA_InitParam->Mem2Mem;
     channel->CHCFG &= ~((uint32_t)0x4000);
     channel->CHCFG |= m2m;
 }

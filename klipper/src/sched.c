@@ -379,7 +379,7 @@ ff_eddy_timer_init(void)
     ff_eddy_timer.func = ff_eddy_timer_event;
     ff_eddy_timer.waketime = timer_read_time() + timer_from_us(500);
     ff_eddy_timer.next = NULL;
-    sched_add_timer(&ff_eddy_timer, 98);
+    sched_add_timer(&ff_eddy_timer, FF_TIMER_EDDY_POLL);
 }
 
 

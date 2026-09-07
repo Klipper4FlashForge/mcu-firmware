@@ -139,7 +139,7 @@ ff_eddy_now_ms(void)
 }
 
 // Copy the ring, sort the copy, return the middle element.
-static uint32_t noinline __section(".text.eddy_median")
+static uint32_t noinline
 ff_eddy_median(void)
 {
     uint32_t tmp[FF_EDDY_NSAMP];
@@ -207,17 +207,17 @@ ff_eddy_dma_init(void)
     DMA_DeInit(NS_DMA1_CH1);
     dma.PeriphAddr = (uint32_t)&TIM1->CNT;
     dma.MemAddr = (uint32_t)&ff_eddy_dma_capture;
-    dma.Direction = 0;
+    dma.Direction = DMA_DIR_PERIPH_SRC;
     dma.BufSize = 1;
-    dma.PeriphInc = 0;
-    dma.DMA_MemoryInc = 0;
-    dma.PeriphDataSize = 0x100;
-    dma.MemDataSize = 0x400;
-    dma.CircularMode = 0x20;
-    dma.Priority = 0x2000;
-    dma.Mem2Mem = 0;
+    dma.PeriphInc = DMA_PERIPH_INC_DISABLE;
+    dma.DMA_MemoryInc = DMA_MEM_INC_DISABLE;
+    dma.PeriphDataSize = DMA_PERIPH_DATA_SIZE_HALFWORD;
+    dma.MemDataSize = DMA_MEM_DATA_SIZE_HALFWORD;
+    dma.CircularMode = DMA_MODE_CIRCULAR;
+    dma.Priority = DMA_PRIORITY_HIGH;
+    dma.Mem2Mem = DMA_M2M_DISABLE;
     DMA_Init(NS_DMA1_CH1, &dma);
-    DMA_RequestRemap(NS_DMA1_CH1, 0x32);
+    DMA_RequestRemap(NS_DMA1_CH1, DMA_REMAP_TIM8_UP);
 
     NVIC_InitType nvic;
     nvic.NVIC_IRQChannel = N32_DMA1_Channel1_IRQn;
@@ -234,27 +234,26 @@ ff_eddy_dma_init(void)
 void
 ff_eddy_counter_init(void)
 {
-    RCC_EnableAPB2PeriphClk(0x2000);
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_TIM8);
     {
         GPIO_InitType gpio;
         GPIO_InitStruct(&gpio);
-        gpio.Pin = 1;
+        gpio.Pin = GPIO_PIN_0;
         gpio.GPIO_Mode = GPIO_MODE_AF_PP;
-        gpio.GPIO_Current = 2;      // 8mA drive
-        gpio.GPIO_Alternate = 8;    // TIM8_ETR
+        gpio.GPIO_Current = GPIO_DC_8MA;
+        gpio.GPIO_Alternate = GPIO_AF8_TIM8;
         GPIO_InitPeripheral(NS_GPIOA, &gpio);
     }
 
     TIM_TimeBaseInit(NS_TIM8, FF_EDDY_GATE_ARR, 0);
     TIM_ETRClockMode2Config(NS_TIM8, 0, 0, 0);
-    TIM_DMACmd(NS_TIM8, 0x100);
+    TIM_DMACmd(NS_TIM8, TIM_DMA_UPDATE);
     TIM_Cmd(NS_TIM8);
 
-    RCC_EnableAPB2PeriphClk(0x800);
-    TIM_Module *tim1 = (TIM_Module *)((char *)NS_TIM8 - 0x800);
-    TIM_TimeBaseInit(tim1, 0xffff, 0);
-    TIM_SetEventGeneration(tim1, 1);
-    TIM_Cmd(tim1);
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_TIM1);
+    TIM_TimeBaseInit(NS_TIM1, 0xffff, 0);
+    TIM_SetEventGeneration(NS_TIM1, 1);
+    TIM_Cmd(NS_TIM1);
 
     ff_eddy_dma_init();
 }
@@ -504,7 +503,7 @@ ff_eddy_rebaseline(void)
 // A sample of zero means the oscillator produced no edges at all, and
 // anything past 16 bits means the capture wrapped.  Neither is a
 // reading.
-static int
+static bool
 ff_eddy_value_bad(uint32_t value)
 {
     return value == 0 || value > 0xffff;

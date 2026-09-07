@@ -53,6 +53,8 @@ typedef struct
 #define NS_GPIOD ((GPIO_Module *)0x40024000)
 
 #define GPIO_PIN_ALL    ((uint32_t)0xffff)
+#define GPIO_PIN_0      ((uint32_t)0x0001)
+#define GPIO_PIN_1      ((uint32_t)0x0002)
 #define GPIO_PIN_9      ((uint32_t)0x0200)
 #define GPIO_PIN_10     ((uint32_t)0x0400)
 
@@ -60,6 +62,7 @@ typedef struct
 #define GPIO_MODE_OUT_PP    ((uint32_t)0x01)
 #define GPIO_MODE_AF_PP     ((uint32_t)0x02)
 #define GPIO_MODE_ANALOG    ((uint32_t)0x03)
+#define GPIO_MODE_OD        ((uint32_t)0x10)
 #define GPIO_MODE_OUT_OD    ((uint32_t)0x11)
 #define GPIO_MODE_AF_OD     ((uint32_t)0x12)
 
@@ -69,9 +72,11 @@ typedef struct
 
 #define GPIO_SLEW_RATE_FAST ((uint32_t)0x00)
 #define GPIO_DC_2MA         ((uint32_t)0x00)
+#define GPIO_DC_8MA         ((uint32_t)0x02)
 
 #define GPIO_NO_AF          ((uint32_t)0x0f)
 #define GPIO_AF5_USART1     ((uint32_t)0x05)
+#define GPIO_AF8_TIM8       ((uint32_t)0x08)
 
 void GPIO_ConfigPinAF(GPIO_Module *GPIOx, uint32_t af, uint32_t pinpos);
 void GPIO_ConfigPinMode(GPIO_Module *GPIOx, uint32_t mode, uint32_t pinpos);
@@ -191,6 +196,19 @@ typedef struct
 #define NS_DMA1_CH7 ((DMA_ChannelType *)0x40020080)
 #define NS_DMA1_CH8 ((DMA_ChannelType *)0x40020094)
 
+#define DMA_DIR_PERIPH_SRC              ((uint32_t)0x00000000)
+#define DMA_PERIPH_INC_DISABLE          ((uint32_t)0x00000000)
+#define DMA_MEM_INC_DISABLE             ((uint32_t)0x00000000)
+#define DMA_PERIPH_DATA_SIZE_HALFWORD   ((uint32_t)0x00000100)
+#define DMA_MEM_DATA_SIZE_HALFWORD      ((uint32_t)0x00000400)
+#define DMA_MODE_CIRCULAR               ((uint32_t)0x00000020)
+#define DMA_MODE_NORMAL                 ((uint32_t)0x00000000)
+#define DMA_PRIORITY_HIGH               ((uint32_t)0x00002000)
+#define DMA_M2M_DISABLE                 ((uint32_t)0x00000000)
+
+// DMA channel request selection: TIM8 update event.
+#define DMA_REMAP_TIM8_UP               ((uint32_t)0x00000032)
+
 #define DMA_INT_TXC     ((uint32_t)0x00000002)
 
 #define DMA1_INT_TXC1   ((uint32_t)0x00000002)
@@ -286,6 +304,8 @@ void TIM_TimeBaseInit(TIM_Module *TIMx, uint16_t period, uint16_t prescaler);
 void TIM_SetEventGeneration(TIM_Module *TIMx, uint16_t value);
 void TIM_ETRClockMode2Config(TIM_Module *TIMx, uint16_t prescaler,
                              uint16_t polarity, uint16_t filter);
+#define TIM_DMA_UPDATE  ((uint16_t)0x0100)
+
 void TIM_DMACmd(TIM_Module *TIMx, uint16_t request);
 void TIM_Cmd(TIM_Module *TIMx);
 
@@ -374,6 +394,8 @@ typedef struct
 #define RCC_AHB_PERIPH_GPIOA    ((uint32_t)0x00000080)
 
 #define RCC_APB2_PERIPH_AFIO    ((uint32_t)0x00000001)
+#define RCC_APB2_PERIPH_TIM1    ((uint32_t)0x00000800)
+#define RCC_APB2_PERIPH_TIM8    ((uint32_t)0x00002000)
 #define RCC_APB2_PERIPH_USART1  ((uint32_t)0x00004000)
 
 void RCC_EnableAHBPeriphClk(uint32_t RCC_AHBPeriph);

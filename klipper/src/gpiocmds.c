@@ -167,7 +167,7 @@ command_queue_digital_out(uint32_t *args)
         sched_del_timer(&d->timer);
         d->timer.waketime = time;
         d->timer.func = digital_load_event;
-        sched_add_timer(&d->timer, 15);
+        sched_add_timer(&d->timer, FF_TIMER_DIGITAL_QUEUE);
     }
     irq_enable();
 }
@@ -187,7 +187,7 @@ command_update_digital_out(uint32_t *args)
         d->timer.waketime = d->end_time = timer_read_time() + d->max_duration;
         d->timer.func = digital_load_event;
         d->flags = (flags & DF_DEFAULT_ON) | on_flag | DF_CHECK_END;
-        sched_add_timer(&d->timer, 14);
+        sched_add_timer(&d->timer, FF_TIMER_DIGITAL_UPDATE);
     } else {
         d->flags = (flags & DF_DEFAULT_ON) | on_flag;
     }

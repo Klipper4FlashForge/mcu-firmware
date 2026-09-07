@@ -88,7 +88,7 @@ timer_reset(void)
         // Timer in sched.c already ensures SysTick wont overflow
         return;
     // The wrap timer carries no call-site tag of its own.
-    sched_add_timer(&wrap_timer, 0);
+    sched_add_timer(&wrap_timer, FF_TIMER_UNTAGGED);
 }
 DECL_SHUTDOWN(timer_reset);
 

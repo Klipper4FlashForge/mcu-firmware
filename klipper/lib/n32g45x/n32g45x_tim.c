@@ -11,7 +11,7 @@ TIM_SetEventGeneration(TIM_Module *TIMx, uint16_t value)
     TIMx->EGR = value;
 }
 
-__attribute__((noipa)) void
+void
 TIM_InitTimeBase(TIM_Module *TIMx, TIM_TimeBaseInitType *s)
 {
     // TIM6 is a basic timer: it has no counter-mode, clock-division or

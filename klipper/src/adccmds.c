@@ -89,7 +89,7 @@ command_query_analog_in(uint32_t *args)
     a->range_check_count = args[7];
     if (! a->sample_count)
         return;
-    sched_add_timer(&a->timer, 31);
+    sched_add_timer(&a->timer, FF_TIMER_ANALOG_QUERY);
 }
 DECL_COMMAND(command_query_analog_in,
              "query_analog_in oid=%c clock=%u sample_ticks=%u sample_count=%c"
@@ -132,7 +132,7 @@ analog_in_shutdown(void)
             a->state = a->sample_count + 1;
             a->next_begin_time += a->rest_time;
             a->timer.waketime = a->next_begin_time;
-            sched_add_timer(&a->timer, 0);
+            sched_add_timer(&a->timer, FF_TIMER_UNTAGGED);
         }
     }
 }

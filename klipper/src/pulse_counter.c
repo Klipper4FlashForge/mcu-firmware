@@ -70,7 +70,7 @@ command_query_counter(uint32_t *args)
     c->poll_ticks = args[2];
     c->sample_ticks = args[3];
     c->next_sample_time = c->timer.waketime; // sample immediately
-    sched_add_timer(&c->timer, 56);
+    sched_add_timer(&c->timer, FF_TIMER_COUNTER_QUERY);
 }
 DECL_COMMAND(command_query_counter,
              "query_counter oid=%c clock=%u poll_ticks=%u sample_ticks=%u");

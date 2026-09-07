@@ -26,9 +26,26 @@ struct task_wake {
 };
 
 
+// FlashForge: every sched_add_timer() call site carries a tag, and the tag
+// is reported to the host as `close` if that timer is ever scheduled in the
+// past.  0 means the call site is not worth naming.
+enum {
+    FF_TIMER_UNTAGGED       = 0,
+    FF_TIMER_ENDSTOP_HOME   = 1,
+    FF_TIMER_DIGITAL_UPDATE = 14,
+    FF_TIMER_DIGITAL_QUEUE  = 15,
+    FF_TIMER_STEPPER_QUEUE  = 22,
+    FF_TIMER_TRSYNC_EXPIRE  = 28,
+    FF_TIMER_TRSYNC_REPORT  = 29,
+    FF_TIMER_ANALOG_QUERY   = 31,
+    FF_TIMER_PWM_QUEUE      = 45,
+    FF_TIMER_BUTTONS_QUERY  = 48,
+    FF_TIMER_TMCUART_SEND   = 51,
+    FF_TIMER_COUNTER_QUERY  = 56,
+    FF_TIMER_EDDY_POLL      = 98,
+};
+
 // sched.c
-// FlashForge: the tag names the call site, and is reported to the
-// host as `close` if this timer is ever scheduled in the past.
 void sched_add_timer(struct timer*, uint8_t tag);
 extern uint8_t ff_timer_close;
 void sched_del_timer(struct timer *del);

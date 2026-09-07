@@ -61,7 +61,7 @@ void
 gpio_peripheral(uint32_t gpio, uint32_t mode, int pullup)
 {
     GPIO_Module *r = digital_regs[GPIO2PORT(gpio)];
-    volatile uint32_t *rcc = (volatile uint32_t *)0x40021014;
+    volatile uint32_t *rcc = &RCC->AHBENR;
     uint32_t bit = ((uint32_t)r - APB2PERIPH_BASE) >> 10;
     *rcc |= 1 << bit;
     *rcc;
@@ -86,12 +86,15 @@ gpio_peripheral(uint32_t gpio, uint32_t mode, int pullup)
     shift = pos * 2;
     r->PMODE = ((mode & 3) << shift) | (r->PMODE & ~(3 << shift));
     uint32_t mask = ~(3 << shift);
-    if ((mode & 0xffffffef) - 1 < 2)
-        r->POTYPE = (((mode & 0x1f) >> 4) << pos)
+    // Bit 4 of the mode selects open drain; the low bits are the mode
+    // proper.  Only the two output modes have an output type at all.
+    uint32_t kind = mode & ~GPIO_MODE_OD;
+    if (kind == GPIO_MODE_OUT_PP || kind == GPIO_MODE_AF_PP)
+        r->POTYPE = (((mode & GPIO_MODE_OD) >> 4) << pos)
             | (r->POTYPE & ~(1 << pos));
     r->PUPD = (pullup << shift) | (r->PUPD & mask);
     r->SR &= ~(1 << pos);
-    r->DS = (2 << shift) | (r->DS & mask);
+    r->DS = (GPIO_DC_8MA << shift) | (r->DS & mask);
     if (__builtin_expect_with_probability(pullup > 0, 1, 0.8)) {
         r->PBSC = 1 << pos;
     } else if (pullup) {

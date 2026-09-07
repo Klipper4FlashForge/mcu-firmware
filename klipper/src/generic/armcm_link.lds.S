@@ -149,7 +149,6 @@ SECTIONS
         *(.bss.ff_eddy_offset)
         *(.bss.ff_eddy_trig_count)
         *(.bss.ff_eddy_peel)
-        *(.bss.tx_dma_active)
         *(.bss.*)
         *(COMMON)
         . = ALIGN(4);

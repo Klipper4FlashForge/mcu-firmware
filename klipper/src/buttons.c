@@ -110,7 +110,7 @@ command_buttons_query(uint32_t *args)
         shutdown_ec(FF_EC_BUTTON_RETRANSMIT_COUNT, "Invalid buttons retransmit count");
     if (! b->rest_ticks)
         return;
-    sched_add_timer(&b->time, 48);
+    sched_add_timer(&b->time, FF_TIMER_BUTTONS_QUERY);
 }
 DECL_COMMAND(command_buttons_query,
              "buttons_query oid=%c clock=%u rest_ticks=%u retransmit_count=%c"

@@ -100,7 +100,7 @@ command_queue_pwm_out(uint32_t *args)
         shutdown_ec(FF_EC_PWM_QUEUE_MAX_DURATION, "Scheduled pwm event will exceed max_duration");
     p->timer.func = pwm_event;
     p->timer.waketime = m->waketime;
-    sched_add_timer(&p->timer, 45);
+    sched_add_timer(&p->timer, FF_TIMER_PWM_QUEUE);
 }
 DECL_COMMAND(command_queue_pwm_out, "queue_pwm_out oid=%c clock=%u value=%hu");
 

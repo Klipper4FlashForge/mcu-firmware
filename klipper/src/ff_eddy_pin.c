@@ -7,9 +7,9 @@ ff_eddy_pin_init(void)
 {
     GPIO_InitType gpio;
     GPIO_InitStruct(&gpio);
-    gpio.Pin = 1 << 1;
+    gpio.Pin = GPIO_PIN_1;
     gpio.GPIO_Mode = GPIO_MODE_OUT_PP;
-    gpio.GPIO_Current = 2;
+    gpio.GPIO_Current = GPIO_DC_8MA;
     GPIO_InitPeripheral(NS_GPIOA, &gpio);
-    GPIO_SetBits(NS_GPIOA, 1 << 1);
+    GPIO_SetBits(NS_GPIOA, GPIO_PIN_1);
 }
