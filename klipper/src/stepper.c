@@ -164,7 +164,7 @@ stepper_event_full(struct timer *t)
     // Next step event is too close to the last unstep
     int32_t diff = s->time.waketime - min_next_time;
     if (diff < (int32_t)-timer_from_us(1000))
-        shutdown_ec(14, "Stepper too far in past");
+        shutdown_ec(FF_EC_STEPPER_TOO_FAR_PAST, "Stepper too far in past");
 reschedule_min:
     s->time.waketime = min_next_time;
     return SF_RESCHEDULE;
@@ -225,7 +225,7 @@ command_queue_step(uint32_t *args)
     m->interval = args[1];
     m->count = args[2];
     if (!m->count)
-        shutdown_ec(15, "Invalid count parameter");
+        shutdown_ec(FF_EC_STEPPER_BAD_COUNT, "Invalid count parameter");
     m->add = args[3];
     m->flags = 0;
 
@@ -271,7 +271,7 @@ command_reset_step_clock(uint32_t *args)
     uint32_t waketime = args[1];
     irq_disable();
     if (s->count)
-        shutdown_ec(16, "Can't reset time when stepper active");
+        shutdown_ec(FF_EC_STEPPER_ACTIVE, "Can't reset time when stepper active");
     s->next_step_time = s->time.waketime = waketime;
     s->flags &= ~SF_NEED_RESET;
     irq_enable();

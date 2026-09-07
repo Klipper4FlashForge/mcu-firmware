@@ -13,15 +13,13 @@
 
 #if CONFIG_MACH_N32G45x && CONFIG_STM32_SERIAL_USART1
 // ==========================================================================
-// FlashForge "levelBoard" (Nations N32G45x) reconstruction.
+// levelBoard console (Nations N32G45x).
 //
-// The stock console is upstream Klipper's byte-at-a-time USART1 RXNE/TXE
-// interrupt path, not DMA driven, accessed through the Nations N32G45x
-// peripheral library (lib/n32g45x) instead of Klipper's generic
-// enable_pclock()/gpio_peripheral()/armcm_enable_irq() stm32 helpers, and
-// with USART registers accessed 16 bits wide.  See
-// tools/mcu-recovery/recovered_serial.md for the full analysis, addresses
-// and per-function verification against the stock image.
+// Klipper's byte-at-a-time USART1 RXNE/TXE interrupt path, not DMA driven,
+// but built on the Nations peripheral library (lib/n32g45x) rather than on
+// Klipper's enable_pclock()/gpio_peripheral()/armcm_enable_irq() helpers,
+// because the N32's GPIO and RCC blocks are not the F1's.  Every USART
+// register on this part is accessed 16 bits wide.
 // ==========================================================================
 #include "n32g45x.h" // NS_USART1
 
@@ -56,10 +54,9 @@ serial_enable_tx_irq(void)
     NS_USART1->CTRL1 = CR1_FLAGS | USART_CTRL1_TXDEIEN;
 }
 
-// Vestigial DMA transmit path.  The stock firmware still carries these two
-// handlers (and still turns on the DMA1 clock in serial_init), but nothing
-// ever configures or starts DMA1 channel 4/5 for USART1, so neither handler
-// can run and this flag is only ever cleared.
+// Vestigial DMA transmit path.  Nothing configures or starts DMA1 channel
+// 4/5 for USART1 -- serial_init only turns the DMA1 clock on -- so neither
+// handler below can run and this flag is only ever cleared.
 uint8_t tx_dma_active;
 
 void
@@ -82,13 +79,10 @@ DMA1_Channel5_IRQHandler(void)
 }
 DECL_ARMCM_IRQ(DMA1_Channel5_IRQHandler, N32_DMA1_Channel5_IRQn);
 
-// Stock's vector table is 69 words long: IRQ 0..52.  IRQ 52 (UART4 on this
-// part's numbering) is padded out to a DefaultHandler slot even though
-// UART4's base address, 0x40004C00, appears nowhere in the image -- UART4
-// is not used.  What actually causes the table to extend that far is not
-// known (no peripheral in this range is otherwise touched); this
-// declaration reproduces the table's length and bytes without asserting a
-// mechanism for it.
+// Pad the vector table out to IRQ 52.  Nothing in this firmware uses UART4,
+// which is the peripheral at that number, and why the table has to reach
+// that far is not established; this declaration reproduces its length
+// without asserting a reason.  See mcu/levelBoard/notes/.
 DECL_ARMCM_IRQ(DefaultHandler, 52);
 
 void
@@ -137,18 +131,11 @@ DECL_INIT(serial_init);
 
 // Select the configured serial port
 #if CONFIG_STM32_SERIAL_USART1
-  DECL_CONSTANT_STR("RESERVE_PINS_serial", "PH10,PH9");
+  DECL_CONSTANT_STR("RESERVE_PINS_serial", "PA10,PA9");
   #define GPIO_Rx GPIO('A', 10)
   #define GPIO_Tx GPIO('A', 9)
   #define USARTx USART1
-  // Stock installs this handler on vector 36 and unmasks NVIC line 36.
-  // The Nations CMSIS header numbers this part exactly like an F103 --
-  // a contiguous enum in which 36 is SPI2 and USART1 is 37 -- so on the
-  // published numbering this handler sits on the wrong vector and can
-  // never fire.  Neither the SPI2 nor the UART4 base address appears
-  // anywhere in the image.  Reproducing the image requires 36; whether
-  // the shipped silicon really numbers USART1 at 36 is unresolved.
-  #define USARTx_IRQn SPI2_IRQn
+  #define USARTx_IRQn USART1_IRQn
 #elif CONFIG_STM32_SERIAL_USART1_ALT_PB7_PB6
   DECL_CONSTANT_STR("RESERVE_PINS_serial", "PB7,PB6");
   #define GPIO_Rx GPIO('B', 7)

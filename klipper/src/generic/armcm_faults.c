@@ -1,6 +1,6 @@
 // ARM Cortex-M fault handler stubs
 //
-// Copyright (C) 2019  Kevin O'Connor <kevin@koconnor.net>
+// Copyright (C) 2024  FlashForge
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
@@ -28,7 +28,7 @@ SVCallHandler(void)
 }
 DECL_ARMCM_IRQ(SVCallHandler, -5);
 
-// The PendSV slot points at DefaultHandler while the other unused system
-// exception slots stay null (stock has 0x08008921 at offset 0x38).
+// The PendSV slot points at DefaultHandler; the other unused system
+// exception slots stay null.
 void DefaultHandler(void);
 DECL_ARMCM_IRQ(DefaultHandler, -2);

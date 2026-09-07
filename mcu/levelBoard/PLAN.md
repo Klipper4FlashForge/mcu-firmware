@@ -22,6 +22,11 @@ reproduces `mcu/levelBoard/stock/levelBoard.bin` exactly. Measured on
 | `ff_eddy_check_trigger` | 0x08007C98 | 101/101 EXACT | 101/101 | 264/264 |
 | `DMA_Init` | 0x08008F6C | 64/64 EXACT | 64/64 | 146/146 |
 
+Re-measured 2026-09-07 after the N32G45x peripheral driver was split into
+its six SDK modules and all 33 `no_reorder` attributes removed: every row
+above unchanged, image still 0 differing bytes. `DMA_Init` now lives in
+`lib/n32g45x/n32g45x_dma.c`.
+
 Verified two ways. In the committed tree -- `test/verify.sh` refuses to
 run against uncommitted edits, so its pass is a statement about what is
 committed -- and the long way round, by lifting the recovery commit onto a

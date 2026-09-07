@@ -16,8 +16,8 @@
 
 #define RX_BUFFER_SIZE 384
 
-// RX_BUFFER_SIZE is 384 here (upstream: 192), so the position index
-// must be wider than the uint8_t upstream uses.
+// The receive buffer is 384 bytes, so the position index has to be wider
+// than a byte.
 static uint8_t receive_buf[RX_BUFFER_SIZE];
 static uint16_t receive_pos;
 static uint8_t transmit_buf[96], transmit_pos, transmit_max;

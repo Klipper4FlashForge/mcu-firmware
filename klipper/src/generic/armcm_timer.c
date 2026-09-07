@@ -87,8 +87,7 @@ timer_reset(void)
     if (timer_from_us(100000) <= 0xffffff)
         // Timer in sched.c already ensures SysTick wont overflow
         return;
-    // Tag unknown: 98 belongs to the FlashForge eddy timer (0x0800630c),
-    // and no stock call site could be attributed to this one.
+    // The wrap timer carries no call-site tag of its own.
     sched_add_timer(&wrap_timer, 0);
 }
 DECL_SHUTDOWN(timer_reset);

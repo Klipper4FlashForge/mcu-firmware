@@ -41,9 +41,9 @@
 #define shutdown(msg)                           \
     sched_shutdown(_DECL_STATIC_STR(msg))
 // FlashForge: a shutdown also latches a numeric error code, which the host
-// reads back to name the fault.  The codes were recovered from the stock
-// image; they run in source order within each file.
-extern uint32_t ff_shutdown_code;
+// reads back to name the fault.  The codes run in source order within each
+// file.
+#include "ff_flashforge.h" // ff_shutdown_code
 #define shutdown_ec(code, msg) do {             \
         ff_shutdown_code = (code);              \
         shutdown(msg);                          \

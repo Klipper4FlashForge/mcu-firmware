@@ -16,6 +16,7 @@ config STM32_SELECT
     select HAVE_STEPPER_BOTH_EDGE
     select HAVE_BOOTLOADER_REQUEST
     select HAVE_LIMITED_CODE_SIZE if MACH_STM32F031 || MACH_STM32F042
+    select HAVE_LIMITED_CODE_SIZE if MACH_N32G45x
 
 config BOARD_DIRECTORY
     string
@@ -224,10 +225,9 @@ config FLASH_SIZE
 
 config FLASH_BOOT_ADDRESS
     hex
-    # This part carries a factory bootloader below the application, and
-    # FlashForge declare the boot address as the application base.  That
-    # makes canboot_reset() fold away, which is why stock's "reset" handler
-    # is a bare NVIC_SystemReset.
+    # This part carries a factory bootloader below the application, and the
+    # boot address is declared as the application base, so canboot_reset()
+    # folds away and "reset" is a bare NVIC_SystemReset.
     default 0x8004000 if MACH_N32G45x
     default 0x8000000
 
@@ -252,11 +252,11 @@ config RAM_SIZE
     default 0x9000 if MACH_STM32G07x
     default 0x24000 if MACH_STM32G0Bx
     default 0x20000 if MACH_STM32H7
-    default 0x4000 if MACH_N32G45x # FF levelBoard: SP=0x20004000
+    default 0x4000 if MACH_N32G45x # FF levelBoard: 16 KiB
 
 config STACK_SIZE
     int
-    # FlashForge reserve 2 KiB: stock's dynmem_end is 0x20003800.
+    # 2 KiB of stack, leaving the rest of the 16 KiB for dynamic memory.
     default 2048 if MACH_N32G45x
     default 512
 

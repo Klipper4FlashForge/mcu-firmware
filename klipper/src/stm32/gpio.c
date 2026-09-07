@@ -34,9 +34,8 @@ DECL_ENUMERATION_RANGE("pin", "PH0", GPIO('H', 0), 16);
 DECL_ENUMERATION_RANGE("pin", "PI0", GPIO('I', 0), 16);
 #endif
 
-GPIO_TypeDef * const digital_regs[] = {
-    (GPIO_TypeDef *)NS_GPIOA, (GPIO_TypeDef *)NS_GPIOB,
-    (GPIO_TypeDef *)NS_GPIOC, (GPIO_TypeDef *)NS_GPIOD,
+GPIO_Module * const digital_regs[] = {
+    NS_GPIOA, NS_GPIOB, NS_GPIOC, NS_GPIOD,
 };
 
 // Position of the lowest set bit, 0..15 (0 when none is set)
@@ -51,15 +50,13 @@ bit_to_pin(uint32_t bit)
 }
 
 // Convert a register and bit location back to an integer pin identifier.
-// The port is found by walking digital_regs, as upstream does: the loop's
-// exit probabilities give the port blocks, the bit loop and the merge
-// point stock's order and stock's register assignment (0x08007fc0).
+// The port is found by walking digital_regs.
 static int
 regs_to_pin(GPIO_Module *regs, uint32_t bit)
 {
     int i;
     for (i=0; i<ARRAY_SIZE(digital_regs); i++)
-        if (digital_regs[i] == (GPIO_TypeDef *)regs)
+        if (digital_regs[i] == regs)
             return GPIO('A' + i, bit_to_pin(bit));
     return 0;
 }
@@ -76,9 +73,9 @@ struct gpio_out
 gpio_out_setup(uint32_t pin, uint32_t val)
 {
     if (!gpio_valid(pin))
-        shutdown_ec(11, "Not an output pin");
-    GPIO_Module *regs = (GPIO_Module *)digital_regs[GPIO2PORT(pin)];
-    gpio_clock_enable((GPIO_TypeDef *)regs);
+        shutdown_ec(FF_EC_GPIO_NOT_AN_OUTPUT, "Not an output pin");
+    GPIO_Module *regs = digital_regs[GPIO2PORT(pin)];
+    gpio_clock_enable(regs);
     struct gpio_out g = { .regs=regs, .bit=GPIO2BIT(pin) };
     gpio_out_reset(g, val);
     return g;
@@ -125,8 +122,8 @@ struct gpio_in
 gpio_in_setup(uint32_t pin, int32_t pull_up)
 {
     if (!gpio_valid(pin))
-        shutdown_ec(12, "Not a valid input pin");
-    GPIO_Module *regs = (GPIO_Module *)digital_regs[GPIO2PORT(pin)];
+        shutdown_ec(FF_EC_GPIO_NOT_AN_INPUT, "Not a valid input pin");
+    GPIO_Module *regs = digital_regs[GPIO2PORT(pin)];
     struct gpio_in g = { .regs=regs, .bit=GPIO2BIT(pin) };
     gpio_in_reset(g, pull_up);
     return g;
@@ -142,15 +139,16 @@ gpio_in_reset(struct gpio_in g, int32_t pull_up)
     irq_restore(flag);
 }
 
-// The eddy pin state is a volatile read: the sensor interrupt updates it
-// behind the polling loop.
-extern volatile uint8_t ff_eddy_pin_state_v __asm__("ff_eddy_pin_state");
+// PD0 is the bed probe.  It has no port pin of its own: reads of it
+// return the eddy detector's virtual endstop level instead.
+#define FF_EDDY_ENDSTOP_PORT NS_GPIOD
+#define FF_EDDY_ENDSTOP_BIT  (1 << 0)
 
 uint8_t
 gpio_in_read(struct gpio_in g)
 {
     GPIO_Module *regs = g.regs;
-    if (regs != NS_GPIOD || g.bit != 1)
+    if (regs != FF_EDDY_ENDSTOP_PORT || g.bit != FF_EDDY_ENDSTOP_BIT)
         return !!(regs->PID & g.bit);
-    return ff_eddy_pin_state_v;
+    return ff_eddy_pin_state;
 }

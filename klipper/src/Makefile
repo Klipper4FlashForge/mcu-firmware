@@ -1,6 +1,7 @@
 # Main code build rules
 
-src-y += sched.c command.c basecmd.c debugcmds.c ff_flashforge.c ff_eddy.c
+src-y += sched.c command.c basecmd.c debugcmds.c ff_flashforge.c ff_eddy.c \
+    ff_eddy_pin.c
 src-$(CONFIG_HAVE_GPIO) += initial_pins.c gpiocmds.c stepper.c endstop.c \
     trsync.c
 src-$(CONFIG_HAVE_GPIO_ADC) += adccmds.c

@@ -6,14 +6,11 @@
 
 #include "autoconf.h" // CONFIG_CLOCK_REF_FREQ
 #include "board/armcm_boot.h" // VectorTable
-#include "board/armcm_reset.h" // try_request_canboot
 #include "board/irq.h" // irq_disable
 #include "board/misc.h" // bootloader_request
 #include "internal.h" // enable_pclock
 #include "sched.h" // sched_main
-#include "../../lib/n32g45x/include/n32g45x.h"
-
-extern void NVIC_PriorityGroupConfig(uint32_t);
+#include "n32g45x.h" // NVIC_PriorityGroupConfig
 
 
 /****************************************************************
@@ -47,7 +44,7 @@ get_pclock_frequency(uint32_t periph_base)
 
 // Enable a GPIO peripheral clock
 void
-gpio_clock_enable(GPIO_TypeDef *regs)
+gpio_clock_enable(GPIO_Module *regs)
 {
     uint32_t rcc_pos = ((uint32_t)regs - APB2PERIPH_BASE) / 0x400;
     volatile uint32_t *ahbpclken = (volatile uint32_t *)0x40021014;
@@ -55,81 +52,27 @@ gpio_clock_enable(GPIO_TypeDef *regs)
     *ahbpclken;
 }
 
-// Main clock setup called at chip startup
-static void
-clock_setup(void)
-{
-    // Configure and enable PLL
-    uint32_t cfgr;
-    if (!CONFIG_STM32_CLOCK_REF_INTERNAL) {
-        // Configure 72Mhz PLL from external crystal (HSE)
-        RCC->CR |= RCC_CR_HSEON;
-        uint32_t div = CONFIG_CLOCK_FREQ / (CONFIG_CLOCK_REF_FREQ / 2);
-        cfgr = 1 << RCC_CFGR_PLLSRC_Pos;
-        if ((div & 1) && div <= 16)
-            cfgr |= RCC_CFGR_PLLXTPRE_HSE_DIV2;
-        else
-            div /= 2;
-        cfgr |= (div - 2) << RCC_CFGR_PLLMULL_Pos;
-    } else {
-        // Configure 72Mhz PLL from internal 8Mhz oscillator (HSI)
-        uint32_t div2 = (CONFIG_CLOCK_FREQ / 8000000) * 2;
-        cfgr = ((0 << RCC_CFGR_PLLSRC_Pos)
-                | ((div2 - 2) << RCC_CFGR_PLLMULL_Pos));
-    }
-    cfgr |= RCC_CFGR_PPRE1_DIV2 | RCC_CFGR_PPRE2_DIV2 | RCC_CFGR_ADCPRE_DIV8;
-    RCC->CFGR = cfgr;
-    RCC->CR |= RCC_CR_PLLON;
-
-    // Set flash latency
-    FLASH->ACR = (2 << FLASH_ACR_LATENCY_Pos) | FLASH_ACR_PRFTBE;
-
-    // Wait for PLL lock
-    while (!(RCC->CR & RCC_CR_PLLRDY))
-        ;
-
-    // Switch system clock to PLL
-    RCC->CFGR = cfgr | RCC_CFGR_SW_PLL;
-    while ((RCC->CFGR & RCC_CFGR_SWS_Msk) != RCC_CFGR_SWS_PLL)
-        ;
-}
-
-
 /****************************************************************
  * GPIO setup
  ****************************************************************/
-
-static void
-stm32f1_alternative_remap(uint32_t mapr_mask, uint32_t mapr_value)
-{
-    // The MAPR register is a mix of write only and r/w bits
-    // We have to save the written values in a global variable
-    static uint32_t mapr = 0;
-
-    mapr &= ~mapr_mask;
-    mapr |= mapr_value;
-    AFIO->MAPR = mapr;
-}
-
-#define STM_OSPEED 0x1 // ~10Mhz at 50pF
 
 // Set the mode and extended function of a pin
 void
 gpio_peripheral(uint32_t gpio, uint32_t mode, int pullup)
 {
-    GPIO_Module *r = (GPIO_Module *)digital_regs[GPIO2PORT(gpio)];
+    GPIO_Module *r = digital_regs[GPIO2PORT(gpio)];
     volatile uint32_t *rcc = (volatile uint32_t *)0x40021014;
-    uint32_t bit = ((uint32_t)r + 0xbfff0000) >> 10;
+    uint32_t bit = ((uint32_t)r - APB2PERIPH_BASE) >> 10;
     *rcc |= 1 << bit;
     *rcc;
 
     uint32_t pos = gpio & 15, shift = (pos & 7) * 4;
-    // The stock port spells the two AF register paths separately.  It also
-    // shifts the GPIO register value itself into the AF field; retain that
-    // original quirk for binary and behavioral fidelity.
-    // The branch probabilities decide where GCC parks the two out-of-line
-    // blocks (the AFL write and the POTYPE write) relative to each other and
-    // to the pullup tail; these weights reproduce stock's block order.
+    // Pins 0-7 and 8-15 have their own alternate-function register, so
+    // the two paths are spelled out separately.  Note the long-standing
+    // quirk of this port: what gets shifted into the AF field is the GPIO
+    // register value, not the function number.
+    // Alternate functions are used on the high half of a port about as
+    // often as on the low half here.
     if (__builtin_expect_with_probability(!!(pos & 8), 1, 0.6)) {
         uint32_t af = r->AFH & ~(0xf << shift);
         af |= (uint32_t)r << shift;
@@ -149,11 +92,10 @@ gpio_peripheral(uint32_t gpio, uint32_t mode, int pullup)
     r->PUPD = (pullup << shift) | (r->PUPD & mask);
     r->SR &= ~(1 << pos);
     r->DS = (2 << shift) | (r->DS & mask);
-    if (__builtin_expect_with_probability(pullup < 1, 1, 0.2)) {
-        if (pullup)
-            r->PBSC = 1 << (pos + 16);
-    } else {
+    if (__builtin_expect_with_probability(pullup > 0, 1, 0.8)) {
         r->PBSC = 1 << pos;
+    } else if (pullup) {
+        r->PBSC = 1 << (pos + 16);
     }
 }
 
@@ -186,9 +128,9 @@ usb_stm32duino_bootloader(void)
     NVIC_SystemReset();
 }
 
-// Handle reboot requests.  Stock's copy is an empty function: it never
-// asks CanBoot for anything (the image sits behind FlashForge's own IAP
-// bootloader), so try_request_canboot() is not linked at all.
+// Handle reboot requests.  These boards sit behind FlashForge's own IAP
+// bootloader and never ask CanBoot for anything, so nothing is left here
+// once the configured boot address is the application base.
 void
 bootloader_request(void)
 {
@@ -207,14 +149,15 @@ bootloader_request(void)
 void
 armcm_main(void)
 {
-    // Restore VTOR after reset-stage clock setup.
-    asm volatile("movs r3, #0\n msr primask, r3");
+    // Take interrupts under our own control, then point the core at our
+    // vector table -- SystemInit() left VTOR at the bootloader's copy.
+    __set_PRIMASK(0);
     __enable_irq();
     __DMB();
     SCB->VTOR = (uint32_t)VectorTable;
     __DSB();
     __ISB();
-    NVIC_PriorityGroupConfig(0x700);
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 
     sched_main();
 }

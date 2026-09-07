@@ -74,7 +74,7 @@ command_config_buttons(uint32_t *args)
 {
     uint8_t button_count = args[1];
     if (button_count > 8)
-        shutdown_ec(37, "Max of 8 buttons");
+        shutdown_ec(FF_EC_TOO_MANY_BUTTONS, "Max of 8 buttons");
     struct buttons *b = oid_alloc(
         args[0], command_config_buttons
         , sizeof(*b) + sizeof(b->pins[0]) * button_count);
@@ -89,7 +89,7 @@ command_buttons_add(uint32_t *args)
     struct buttons *b = oid_lookup(args[0], command_config_buttons);
     uint8_t pos = args[1];
     if (pos >= b->button_count)
-        shutdown_ec(38, "Set button past maximum button count");
+        shutdown_ec(FF_EC_BUTTON_OUT_OF_RANGE, "Set button past maximum button count");
     b->pins[pos] = gpio_in_setup(args[2], args[3]);
 }
 DECL_COMMAND(command_buttons_add,
@@ -107,7 +107,7 @@ command_buttons_query(uint32_t *args)
     b->retransmit_state = BF_ACKED;
     b->retransmit_count = args[3];
     if (b->retransmit_count >= BF_NO_RETRANSMIT)
-        shutdown_ec(39, "Invalid buttons retransmit count");
+        shutdown_ec(FF_EC_BUTTON_RETRANSMIT_COUNT, "Invalid buttons retransmit count");
     if (! b->rest_ticks)
         return;
     sched_add_timer(&b->time, 48);

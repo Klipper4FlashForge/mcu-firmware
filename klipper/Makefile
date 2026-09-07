@@ -33,23 +33,18 @@ CFLAGS := -iquote $(OUT) -iquote src -iquote $(OUT)board-generic/ \
 		-std=gnu11 -O2 -MD -Wall \
 		-Wold-style-definition $(call cc-option,$(CC),-Wtype-limits,) \
     -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks
-# -fno-shrink-wrap and -ffixed-r10 are not style choices: both were
-# established by measuring instruction-identical functions against the stock
-# image.  Stock places its prologues as if shrink-wrapping were off, and its
-# compiled C never touches r10 -- where it needs a seventh callee-saved
-# register it takes r11, and where it needs an eighth it spills to the stack.
-# Reserving r10 reproduces that allocation everywhere (instruction-exact
-# functions 212 -> 223 of 246 with no regressions); the earlier
-# --param ira-max-loops-num=2 was compensating for the free register and
-# costs two functions once r10 is fixed.
-CFLAGS += -ggdb3 -fno-shrink-wrap -ffixed-r10
+# These two flags reproduce the compiler settings the shipped board images
+# were built with; see mcu/levelBoard/notes/ for the measurements.
+CFLAGS += -fno-shrink-wrap -ffixed-r10
 
-# FlashForge's link order is neither src-y order nor path order.  Keep this
-# separate from src-y: the latter also controls .ctr concatenation and hence
-# message ids, which already match stock byte for byte.
-ff-link-y = adccmds.c basecmd.c buttons.c command.c debugcmds.c endstop.c \
-            gpiocmds.c initial_pins.c neopixel.c pulse_counter.c pwmcmds.c \
-            sched.c stepper.c tmcuart.c trsync.c
+# Link order.  The core objects go first, sorted; ours and the port follow.
+# Keep this separate from src-y: src-y also drives .ctr concatenation, and so
+# the message ids.
+#
+# ff-link-tail-y below is reproduction scaffolding, not FlashForge's -- it
+# encodes a board Makefile we have not recovered.  See mcu/levelBoard/notes/.
+ff-link-y = $(sort $(foreach f,$(filter-out ff_%,$(src-y)),\
+                   $(if $(findstring /,$(f)),,$(f))))
 ff-link-tail-y = ff_flashforge.c ff_eddy_pin.c ff_eddy.c \
                  generic/armcm_faults.c \
                  ../lib/stm32f1/system_stm32f1xx.c \
@@ -58,7 +53,10 @@ ff-link-tail-y = ff_flashforge.c ff_eddy_pin.c ff_eddy.c \
                  generic/serial_irq.c generic/armcm_boot.c stm32/dfu_reboot.c \
                  generic/armcm_irq.c generic/armcm_reset.c \
                  generic/armcm_timer.c generic/crc16_ccitt.c \
-                 generic/armcm_startup.S ../lib/n32g45x/n32g45x_periph.c \
+                 generic/armcm_startup.S \
+                 ../lib/n32g45x/misc.c ../lib/n32g45x/n32g45x_gpio.c \
+                 ../lib/n32g45x/n32g45x_usart.c ../lib/n32g45x/n32g45x_rcc.c \
+                 ../lib/n32g45x/n32g45x_tim.c ../lib/n32g45x/n32g45x_dma.c \
                  stm32/clockline.c \
                  stm32/i2c.c stm32/spi.c
 ff-link-tail-obj-y = $(patsubst %.S,$(OUT)src/%.o,$(patsubst %.c,$(OUT)src/%.o,$(ff-link-tail-y)))

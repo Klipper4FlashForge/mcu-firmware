@@ -121,6 +121,7 @@ config NEED_SENSOR_BULK
     depends on WANT_SENSORS || WANT_LIS2DW || WANT_LDC1612
     default y
 menu "Optional features (to reduce code size)"
+    depends on HAVE_LIMITED_CODE_SIZE
 config WANT_GPIO_BITBANGING
     bool "Support GPIO \"bit-banging\" devices"
     depends on HAVE_GPIO
@@ -192,8 +193,8 @@ config HAVE_BOOTLOADER_REQUEST
 config HAVE_LIMITED_CODE_SIZE
     bool
 
-# FlashForge Creator 5 board selector.  The four stock boards are built from
-# one tree; a command is compiled on every board but its body folds away where
+# FlashForge Creator 5 board selector.  All four boards are built from one
+# tree; a command is compiled on every board but its body folds away where
 # the board does not implement it.
 config FF_BOARD_EBOARD
     bool "FlashForge eBoard (pressure advance sensor)"

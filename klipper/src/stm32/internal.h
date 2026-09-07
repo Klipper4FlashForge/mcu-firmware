@@ -25,7 +25,14 @@
 #endif
 
 // gpio.c
+#if CONFIG_MACH_N32G45x
+// The N32G45x port registers are laid out differently from the F1's, so
+// this port uses the vendor library's own GPIO_Module.
+#include "n32g45x.h" // GPIO_Module
+extern GPIO_Module * const digital_regs[];
+#else
 extern GPIO_TypeDef * const digital_regs[];
+#endif
 #define GPIO(PORT, NUM) (((PORT)-'A') * 16 + (NUM))
 #define GPIO2PORT(PIN) ((PIN) / 16)
 #define GPIO2BIT(PIN) (1<<((PIN) % 16))
@@ -51,6 +58,10 @@ void dfu_reboot_check(void);
 struct cline { volatile uint32_t *en, *rst; uint32_t bit; };
 struct cline lookup_clock_line(uint32_t periph_base);
 uint32_t get_pclock_frequency(uint32_t periph_base);
+#if CONFIG_MACH_N32G45x
+void gpio_clock_enable(GPIO_Module *regs);
+#else
 void gpio_clock_enable(GPIO_TypeDef *regs);
+#endif
 
 #endif // internal.h

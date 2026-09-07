@@ -225,11 +225,9 @@ class Handle_arm_irq:
             # The ResetHandler was not defined - don't build VectorTable
             return ""
         max_irq = max(self.irqs.keys())
-        # FlashForge leave the undeclared system-exception slots null and
-        # only point the peripheral IRQ slots at DefaultHandler; stock
-        # levelBoard has zeroes at 0x010..0x034 where upstream Klipper has
-        # DefaultHandler.  armcm_offset is 16, so slots below it are the
-        # system exceptions.
+        # Leave the undeclared system-exception slots null and point only
+        # the peripheral IRQ slots at DefaultHandler.  armcm_offset is 16,
+        # so every slot below it is a system exception.
         table = (["    0,\n"] * armcm_offset
                  + ["    DefaultHandler,\n"] * (max_irq + 1))
         defs = []
@@ -239,12 +237,10 @@ class Handle_arm_irq:
             defs.append("extern void %s(void);\n" % (func,))
             table[num + armcm_offset] = "    %s,\n" % (func,)
         table[0] = "    &_stack_end,\n"
-        # FlashForge size the array for the part rather than for the highest
-        # declared handler: the N32G45x has 56 external interrupt lines, so
-        # the array is 16 + 56 = 72 words and the slots past the last
-        # initializer are zero.  Stock levelBoard has 0x00000000 at
-        # 0x08004114..0x0800411F, where a 69-word array would leave linker
-        # fill (0xff) instead.
+        # Size the array for the part rather than for the highest declared
+        # handler: the N32G45x has 56 external interrupt lines, so the array
+        # is 16 + 56 = 72 words and the slots past the last initializer read
+        # as zero rather than as linker fill.
         tablen = armcm_offset + ARMCM_IRQ_COUNT
         if len(table) > tablen:
             error("VectorTable longer than %d entries" % (tablen,))
@@ -511,7 +507,8 @@ def build_version(extra, cleanbuild):
     if not cleanbuild:
         # Reproducible builds: KLIPPER_BUILD_VERSION pins the whole stamp,
         # which otherwise carries the wall clock and this machine's hostname
-        # into the data dictionary embedded in the image.
+        # into the data dictionary embedded in the image.  Reproduction
+        # scaffolding; see mcu/levelBoard/notes/.
         forced = os.environ.get('KLIPPER_BUILD_VERSION')
         if forced:
             return forced + extra
@@ -551,10 +548,11 @@ def tool_versions(tools):
     return cleanbuild, "gcc: %s binutils: %s" % (versions[0], versions[1])
 
 def compress_dict(data):
-    # The stock firmware was deflated with classic zlib.  Some distributions
-    # ship a Python linked against zlib-ng, whose output differs byte for
-    # byte at the same level, which changes the image.  KLIPPER_ZLIB points
-    # at a classic libz when an exact reproduction is wanted.
+    # The shipped data dictionaries were deflated with classic zlib.  Some
+    # distributions ship a Python linked against zlib-ng, whose output
+    # differs at the same level and so changes the image.  KLIPPER_ZLIB
+    # points at a classic libz when an image has to be reproduced exactly;
+    # see mcu/levelBoard/notes/.
     libpath = os.environ.get('KLIPPER_ZLIB')
     if not libpath:
         return zlib.compress(data, 9)

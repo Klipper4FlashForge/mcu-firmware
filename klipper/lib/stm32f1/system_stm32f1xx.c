@@ -58,6 +58,9 @@
 
 #include "autoconf.h"
 #include "stm32f1xx.h"
+#if CONFIG_MACH_N32G45x
+#include "n32g45x.h" // NS_RCC
+#endif
 
 /**
   * @}
@@ -123,7 +126,7 @@
   */
 #if CONFIG_MACH_N32G45x
 // The N32 tree initialises this to the PLL frequency SystemInit() will
-// select; stock's .data holds 128000000 here.
+// select, so it is right even before SystemInit() runs.
 uint32_t SystemCoreClock = 128000000;
 #else
 uint32_t SystemCoreClock = 16000000;
@@ -164,29 +167,24 @@ const uint8_t APBPrescTable[8U] =  {0, 0, 0, 0, 1, 2, 3, 4};
 void SystemInit (void)
 {
 #if CONFIG_MACH_N32G45x
-  /* N32G452: RCC at 0x40021000 (CTRL 0x00, CFG 0x04, CLKINT 0x08,
-     APB1PCLKEN 0x1c, CFG2 0x2c, CFG3 0x30, PLLHSIPRE 0x40),
-     FLASH interface at 0x40022000 (AC 0x00). */
-  volatile uint32_t *rcc = (volatile uint32_t *)0x40021000;
-  volatile uint32_t *flash = (volatile uint32_t *)0x40022000;
-
   /* Give the FPU full access (CP10/CP11) */
-  SCB->CPACR |= 0x00f00000;
+  SCB->CPACR |= (3UL << 20) | (3UL << 22);
 
   /* Put the clock tree back into its reset state */
-  rcc[0] |= 1;                          /* HSIEN */
-  rcc[1] &= 0xf87fc00c;                 /* clear SCLKSW, AHB/APB and MCO */
-  rcc[0] &= 0xfef6ffff;                 /* clear HSEEN, CLKSSEN, PLLEN */
-  rcc[0] &= 0xfffbffff;                 /* clear HSEBP */
-  rcc[1] &= 0xf7c0ffff;                 /* clear PLLSRC, PLLHSEPRES, PLLMULFCT */
-  rcc[11] = 0x3800;                     /* CFG2 */
-  rcc[12] = 0;                          /* CFG3 */
-  rcc[16] = 0;                          /* PLLHSIPRE */
-  rcc[2] = 0x04bf0000;                  /* CLKINT: disable and clear every clock irq */
-  rcc[7] |= 0x10000000;                 /* pulse the APB1 PWR clock */
-  rcc[7] &= 0xefffffff;
-  flash[0] |= 0x80;                     /* prefetch buffer on */
-  flash[0] &= ~0x10;                    /* half-cycle access off */
+  NS_RCC->CTRL |= RCC_CTRL_HSIEN;
+  NS_RCC->CFG &= RCC_CFG_RESET_MASK;
+  NS_RCC->CTRL &= RCC_CTRL_RESET_MASK;
+  NS_RCC->CTRL &= ~RCC_CTRL_HSEBP;
+  NS_RCC->CFG &= RCC_CFG_PLL_MASK;
+  NS_RCC->CFG2 = RCC_CFG2_RESET;
+  NS_RCC->CFG3 = 0;
+  NS_RCC->PLLHSIPRE = 0;
+  NS_RCC->CLKINT = RCC_CLKINT_RESET;
+  /* Pulse the APB1 power-controller clock */
+  NS_RCC->APB1PCLKEN |= RCC_APB1_PERIPH_PWR;
+  NS_RCC->APB1PCLKEN &= ~RCC_APB1_PERIPH_PWR;
+  NS_FLASH->AC |= FLASH_AC_PRFTBFE;
+  NS_FLASH->AC &= ~FLASH_AC_HLFCYA;
 
   {
     volatile uint32_t temp;
@@ -195,41 +193,41 @@ void SystemInit (void)
     volatile uint32_t StartUpCounter = 0;
 
     /* Start the 8 MHz crystal and wait for it, with a bounded spin */
-    rcc[0] |= 0x10000;                  /* HSEEN */
+    NS_RCC->CTRL |= RCC_CTRL_HSEEN;
     do {
-      HSEStatus = (rcc[0] >> 17) & 1;   /* HSERDF */
+      HSEStatus = !!(NS_RCC->CTRL & RCC_CTRL_HSERDF);
       StartUpCounter++;
-    } while (HSEStatus == 0 && StartUpCounter != 0x2000);
-    HSEStatus = (rcc[0] >> 17) & 1;
+    } while (HSEStatus == 0 && StartUpCounter != HSE_STARTUP_TIMEOUT);
+    HSEStatus = !!(NS_RCC->CTRL & RCC_CTRL_HSERDF);
     if (HSEStatus != 0) {
-      /* 128 MHz from the 8 MHz crystal: 4 flash wait states, HCLK = SYSCLK,
-         PCLK2 = HCLK/2, PCLK1 = HCLK/4, PLL = HSE * 16 */
-      flash[0] &= ~7;
-      flash[0] |= 2;
-      rcc[1] |= 0;                      /* AHB prescaler: HCLK = SYSCLK */
-      rcc[1] |= 0x2000;                 /* APB2 prescaler /2 */
-      rcc[1] |= 0x500;                  /* APB1 prescaler /4 */
-      rcc[1] &= 0xf7c0ffff;             /* clear the PLL fields */
-      rcc[16] &= ~1;
-      temp = rcc[1];
-      temp |= 0x10000;                  /* PLLSRC = HSE */
-      temp |= 0x20000;                  /* PLLHSEPRES = HSE undivided */
-      temp |= 0x083c0000;               /* PLLMULFCT = 16 */
-      rcc[1] = temp;
-      rcc[16] = PllCfg;
-      rcc[0] |= 0x1000000;              /* PLLEN */
+      /* 128 MHz from the 8 MHz crystal: HCLK = SYSCLK, PCLK2 = HCLK/2,
+         PCLK1 = HCLK/4, PLL = HSE * 16 */
+      NS_FLASH->AC &= ~FLASH_AC_LATENCY_MASK;
+      NS_FLASH->AC |= FLASH_AC_LATENCY_2;
+      NS_RCC->CFG |= RCC_HCLK_DIV1;
+      NS_RCC->CFG |= RCC_PCLK2_DIV2;
+      NS_RCC->CFG |= RCC_PCLK1_DIV4;
+      NS_RCC->CFG &= RCC_CFG_PLL_MASK;
+      NS_RCC->PLLHSIPRE &= ~1;
+      temp = NS_RCC->CFG;
+      temp |= RCC_CFG_PLLSRC_HSE;
+      temp |= RCC_CFG_PLLHSEPRES_DIV1;
+      temp |= RCC_CFG_PLLMULFCT_16;
+      NS_RCC->CFG = temp;
+      NS_RCC->PLLHSIPRE = PllCfg;
+      NS_RCC->CTRL |= RCC_CTRL_PLLEN;
       do {
-      } while (!(rcc[0] & 0x2000000));  /* PLLRDF */
-      rcc[1] &= ~3;
-      rcc[1] |= 2;                      /* SCLKSW = PLL */
+      } while (!(NS_RCC->CTRL & RCC_CTRL_PLLRDF));
+      NS_RCC->CFG &= ~RCC_CFG_SCLKSW_MASK;
+      NS_RCC->CFG |= RCC_CFG_SCLKSW_PLL;
       do {
-      } while ((rcc[1] & 0xc) != 8);    /* wait for SCLKSTS = PLL */
+      } while ((NS_RCC->CFG & RCC_CFG_SCLKSTS_MASK) != RCC_CFG_SCLKSTS_PLL);
     } else {
       SystemCoreClock = 8000000;
     }
   }
 
-  SCB->VTOR = 0x08000000;
+  SCB->VTOR = FLASH_BASE;
 #else
   /* Reset the RCC clock configuration to the default reset state(for debug purpose) */
   /* Set HSION bit */

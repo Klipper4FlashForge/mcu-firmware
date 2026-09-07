@@ -19,7 +19,8 @@ struct analog_in {
     uint8_t state, sample_count;
 };
 
-static volatile uint16_t analog_in_value;
+// Latest sample, for the host debug probe.
+uint16_t analog_in_value;
 static struct task_wake analog_wake;
 
 static uint_fast8_t

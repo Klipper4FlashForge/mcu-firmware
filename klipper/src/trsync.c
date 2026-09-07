@@ -87,7 +87,7 @@ trsync_add_signal(struct trsync *ts, struct trsync_signal *tss
 {
     irqstatus_t flag = irq_save();
     if (tss->func || !func)
-        shutdown_ec(1, "Can't add signal that is already active");
+        shutdown_ec(FF_EC_TRSYNC_SIGNAL_ACTIVE, "Can't add signal that is already active");
     tss->func = func;
     tss->next = ts->signals;
     ts->signals = tss;

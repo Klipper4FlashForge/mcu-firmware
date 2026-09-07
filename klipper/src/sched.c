@@ -16,10 +16,6 @@
 #include "stepper.h" // stepper_event
 #include "ff_flashforge.h" // ff_eddy state
 
-extern uint8_t ff_eddy_calibrated;
-extern uint32_t ff_eddy_sample_ref;
-extern struct task_wake ff_eddy_wake;
-extern void ff_eddy_check_trigger(void);
 void noinline ff_report_close(void);
 
 uint32_t ff_close_num, ff_temp_waketime;
@@ -90,6 +86,8 @@ ff_eddy_timer_event(struct timer *t)
     return SF_RESCHEDULE;
 }
 
+// The two strings below are declared here so that they keep their data
+// dictionary ids; the code that reports them looks them up by name.
 // Find position for a timer in timer_list and insert it
 DECL_CTR("_DECL_STATIC_STR sentinel timer called");
 DECL_CTR("_DECL_STATIC_STR Timer too close");
@@ -329,7 +327,7 @@ void
 sched_clear_shutdown(void)
 {
     if (!SchedStatus.shutdown_status)
-        shutdown_ec(22, "Shutdown cleared when not shutdown");
+        shutdown_ec(FF_EC_CLEAR_WHEN_NOT_SHUTDOWN, "Shutdown cleared when not shutdown");
     if (SchedStatus.shutdown_status == 2)
         return;
     SchedStatus.shutdown_status = 0;
@@ -353,10 +351,9 @@ sched_add_timer(struct timer *add, uint8_t tag)
     if (unlikely(timer_is_before(waketime, tl->waketime))) {
         uint32_t cur = timer_read_time();
         if (timer_is_before(waketime, cur)) {
-            // Stock writes these the other way round from what the report's
-            // field names suggest: the requested wake time lands in the
-            // variable reported as Temp_waketime and the current time in
-            // Close_num.  Reproduced as found.
+            // Note the crossover: the requested wake time is reported to
+            // the host as Temp_waketime and the current time as Close_num,
+            // which is the reverse of what those names suggest.
             ff_temp_waketime = waketime;
             ff_close_num = cur;
             ff_timer_close = tag;
@@ -396,9 +393,6 @@ sched_main(void)
 {
     extern void ctr_run_initfuncs(void);
     ctr_run_initfuncs();
-    extern void ff_eddy_pin_init(void);
-    extern void ff_eddy_counter_init(void);
-    extern void ff_eddy_timer_init(void);
     ff_eddy_pin_init();
     ff_eddy_counter_init();
     ff_eddy_timer_init();

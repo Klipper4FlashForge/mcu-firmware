@@ -83,17 +83,11 @@ command_endstop_home(uint32_t *args)
     e->sample_count = args[3];
     if (!e->sample_count) {
         // Disable end stop checking and let the eddy current sampler run
-        // freely again.  ff_eddy_pin_state is set through a pointer whose
-        // provenance the compiler cannot follow back to the symbol: that
-        // makes the store alias e->ts, which keeps the post-reload scheduler
-        // from sinking "e->ts = NULL" past it.  Writing the flag by name
-        // lets the scheduler swap the last two stores.
-        uint8_t *free_run;
-        __asm__("" : "=r"(free_run) : "0"(&ff_eddy_pin_state));
+        // freely again.
         e->flags = 0;
         ff_endstop_active = 0;
         e->ts = NULL;
-        *free_run = 1;
+        ff_eddy_pin_state = true;
         return;
     }
     ff_eddy_home_reset();
@@ -124,22 +118,20 @@ command_endstop_query_state(uint32_t *args)
 
     sendf("endstop_state oid=%c homing=%c next_clock=%u pin_value=%c"
           , oid, !!(eflags & ESF_HOMING), nextwake, gpio_in_read(e->pin));
-    // Stock stores 1 to this flag on entry and 0 on exit; the exit store is
-    // what makes the function 96 bytes rather than 88.
+    // The query is over; let the eddy sampler run again.
     ff_endstop_active = 0;
 }
 DECL_COMMAND(command_endstop_query_state, "endstop_query_state oid=%c");
 
-// FlashForge addition, recovered from levelBoard.hex (0x080055c8).  Re-arms
-// an endstop after a homing attempt: the trigger counter is reloaded from
-// the sample count, the trsync is dropped and the endstop is taken out of
-// homing.
+// FlashForge addition: re-arm an endstop after a homing attempt.  The
+// trigger counter is reloaded from the sample count, the trsync is dropped
+// and the endstop is taken out of homing.
 //
-// NOTE: the stock firmware calls ctr_lookup_encoder() directly here rather
-// than going through the sendf() macro.  That skips the DECL_CTR marker, so
-// "endstop_recover_state oid=%c ok=%c" is never registered as a response and
-// the lookup returns NULL at run time.  Reproduced verbatim so that the
-// generated data dictionary matches the stock firmware.
+// NOTE: this calls ctr_lookup_encoder() directly instead of going through
+// the sendf() macro, which skips the DECL_CTR marker, so
+// "endstop_recover_state oid=%c ok=%c" is never registered as a response
+// and the lookup returns NULL at run time.  Left as it stands: the data
+// dictionary the host parses depends on it.
 void
 command_endstop_recover_state(uint32_t *args)
 {

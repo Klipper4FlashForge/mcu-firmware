@@ -198,7 +198,7 @@ command_tmcuart_send(uint32_t *args)
     uint8_t *write = command_decode_ptr(args[2]);
     uint8_t read_len = args[3];
     if (write_len > sizeof(t->data) || read_len > sizeof(t->data))
-        shutdown_ec(2, "tmcuart data too large");
+        shutdown_ec(FF_EC_TMCUART_DATA_TOO_LARGE, "tmcuart data too large");
     memcpy(t->data, write, write_len);
     t->pos = 0;
     t->flags = (t->flags & (TU_LINE_HIGH|TU_PULLUP|TU_SINGLE_WIRE)) | TU_ACTIVE;

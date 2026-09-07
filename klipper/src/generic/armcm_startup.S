@@ -1,15 +1,13 @@
 // ARM Cortex-M reset handler and default interrupt handler
 //
-// Copyright (C) 2019  Kevin O'Connor <kevin@koconnor.net>
+// Copyright (C) 2024  FlashForge
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
-// Stock builds this code from a vendor (ST-CubeIDE style) startup_*.s
-// Reset_Handler: copy .data from flash, zero .bss, call SystemInit(),
-// call __libc_init_array(), then hand off to main() (Klipper's
-// armcm_main()).  This file reproduces that handler instruction for
-// instruction so the reset vector and the code that follows it land at
-// the addresses the vendor toolchain produced.
+// The reset handler is the vendor (ST-CubeIDE style) startup_*.s sequence
+// rather than Klipper's: copy .data from flash, zero .bss, call
+// SystemInit(), call __libc_init_array(), then hand off to main(), which
+// is Klipper's armcm_main().
 
     .syntax unified
     .thumb
@@ -61,5 +59,5 @@ ResetHandler:
 DefaultHandler:
 6:      b       6b
     .size DefaultHandler, . - DefaultHandler
-    /* stock pads the halfword to the next word with zero, not a nop */
+    /* pad the halfword out to the next word with zero, not a nop */
     .short  0

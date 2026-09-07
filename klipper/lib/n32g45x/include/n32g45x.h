@@ -1,7 +1,7 @@
 // Minimal Nations N32G45x peripheral library definitions
 //
-// Register layouts and constants recovered from the FlashForge levelBoard
-// firmware image.  Names follow the Nations N32G45x standard peripheral
+// Register layouts and constants for the peripherals the FlashForge
+// levelBoard uses.  Names follow the Nations N32G45x standard peripheral
 // library.  Everything is prefixed NS_ so it cannot collide with the CMSIS
 // stm32f103xe.h definitions that Klipper's stm32 port pulls in.
 
@@ -81,7 +81,7 @@ void GPIO_SetBits(GPIO_Module *GPIOx, uint32_t pin);
 
 // --------------------------------------------------------------- USART ----
 
-// Note: every USART register is accessed 16 bits wide by the stock firmware
+// Note: every USART register on this part is accessed 16 bits wide
 typedef struct
 {
     __IO uint16_t STS;          // 0x00 status
@@ -212,8 +212,8 @@ void DMA_ClearFlag(DMA_Module *DMAy, uint32_t DMAy_FLAG);
 void DMA_RequestRemap(DMA_ChannelType *channel, uint32_t remap);
 
 // Timer register layout used by the Nations peripheral library.  CTRL1,
-// CTRL2, STS, and CCEN are 32-bit; the remaining registers used here are
-// accessed as halfwords in the stock image.
+// CTRL2, STS and CCEN are 32-bit; the remaining registers used here are
+// accessed as halfwords.
 typedef struct
 {
     __IO uint32_t CR1;
@@ -270,9 +270,7 @@ typedef struct
     uint16_t Period;
     uint16_t ClkDiv;
     uint8_t RepetCnt;
-    // The selectors are bool, not uint8_t: same size, but a bool load is
-    // not a character access, so GCC may move it across the volatile
-    // register stores in TIM_InitTimeBase, which is what stock's code does.
+    // The compare-input selectors are flags, not small integers.
     bool CapCh1FromCompEn;
     bool CapCh2FromCompEn;
     bool CapCh3FromCompEn;
@@ -302,6 +300,74 @@ typedef struct
     uint32_t AdcPllClkFreq;     // 0x10
     uint32_t AdcHclkFreq;       // 0x14
 } RCC_ClocksType;
+
+typedef struct
+{
+    __IO uint32_t CTRL;         // 0x00
+    __IO uint32_t CFG;          // 0x04
+    __IO uint32_t CLKINT;       // 0x08
+    __IO uint32_t APB2PRST;     // 0x0c
+    __IO uint32_t APB1PRST;     // 0x10
+    __IO uint32_t AHBPCLKEN;    // 0x14
+    __IO uint32_t APB2PCLKEN;   // 0x18
+    __IO uint32_t APB1PCLKEN;   // 0x1c
+    __IO uint32_t BDCTRL;       // 0x20
+    __IO uint32_t CTRLSTS;      // 0x24
+    __IO uint32_t AHBPRST;      // 0x28
+    __IO uint32_t CFG2;         // 0x2c
+    __IO uint32_t CFG3;         // 0x30
+    uint32_t RESERVED0[3];      // 0x34
+    __IO uint32_t PLLHSIPRE;    // 0x40
+} RCC_Module;
+
+#define NS_RCC ((RCC_Module *)0x40021000)
+
+// RCC_CTRL
+#define RCC_CTRL_HSIEN          ((uint32_t)0x00000001)
+#define RCC_CTRL_HSEEN          ((uint32_t)0x00010000)
+#define RCC_CTRL_HSERDF         ((uint32_t)0x00020000)
+#define RCC_CTRL_HSEBP          ((uint32_t)0x00040000)
+#define RCC_CTRL_CLKSSEN        ((uint32_t)0x00080000)
+#define RCC_CTRL_PLLEN          ((uint32_t)0x01000000)
+#define RCC_CTRL_PLLRDF         ((uint32_t)0x02000000)
+
+// RCC_CFG
+#define RCC_CFG_SCLKSW_MASK     ((uint32_t)0x00000003)
+#define RCC_CFG_SCLKSW_PLL      ((uint32_t)0x00000002)
+#define RCC_CFG_SCLKSTS_MASK    ((uint32_t)0x0000000c)
+#define RCC_CFG_SCLKSTS_PLL     ((uint32_t)0x00000008)
+#define RCC_HCLK_DIV1           ((uint32_t)0x00000000)
+#define RCC_PCLK1_DIV4          ((uint32_t)0x00000500)
+#define RCC_PCLK2_DIV2          ((uint32_t)0x00002000)
+#define RCC_CFG_PLLSRC_HSE      ((uint32_t)0x00010000)
+#define RCC_CFG_PLLHSEPRES_DIV1 ((uint32_t)0x00020000)
+#define RCC_CFG_PLLMULFCT_16    ((uint32_t)0x083c0000)
+// SCLKSW, HPRE, PPRE1, PPRE2, ADCPRE and MCO
+#define RCC_CFG_RESET_MASK      ((uint32_t)0xf87fc00c)
+// PLLSRC, PLLHSEPRES and PLLMULFCT
+#define RCC_CFG_PLL_MASK        ((uint32_t)0xf7c0ffff)
+// HSEEN, CLKSSEN and PLLEN
+#define RCC_CTRL_RESET_MASK     ((uint32_t)0xfef6ffff)
+// every clock interrupt disabled, every pending flag cleared
+#define RCC_CLKINT_RESET        ((uint32_t)0x04bf0000)
+#define RCC_CFG2_RESET          ((uint32_t)0x00003800)
+
+#define RCC_APB1_PERIPH_PWR     ((uint32_t)0x10000000)
+
+#define HSE_STARTUP_TIMEOUT     ((uint32_t)0x2000)
+
+// Flash interface
+typedef struct
+{
+    __IO uint32_t AC;           // 0x00
+} FLASH_Module;
+
+#define NS_FLASH ((FLASH_Module *)0x40022000)
+
+#define FLASH_AC_LATENCY_MASK   ((uint32_t)0x00000007)
+#define FLASH_AC_LATENCY_2      ((uint32_t)0x00000002)
+#define FLASH_AC_HLFCYA         ((uint32_t)0x00000010)
+#define FLASH_AC_PRFTBFE        ((uint32_t)0x00000080)
 
 #define RCC_AHB_PERIPH_DMA1     ((uint32_t)0x00000001)
 #define RCC_AHB_PERIPH_DMA2     ((uint32_t)0x00000002)
