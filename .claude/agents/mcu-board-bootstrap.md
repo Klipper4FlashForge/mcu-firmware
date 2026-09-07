@@ -9,7 +9,7 @@ You take a new image from "a .hex in the control component" to "a tree
 that builds, is byte-reproducible, gates on the dictionary, and has its
 layout pinned", which is the point where the per-function agents take
 over. Read `.claude/skills/mcu-recovery/SKILL.md` and the whole of
-`mcu/levelBoard/README.md` first: the levelBoard is the worked
+`mcu/levelBoard/README.md` and `notes/recovery-log.md` first: the levelBoard is the worked
 example, and every step below was learned there.
 
 ## Step 1: what the image says about itself
@@ -103,6 +103,6 @@ synthetic padding, and the 0xff / zero fill. Only when every function is
 at stock's address does per-function matching mean anything; before that,
 a function's score moves for layout reasons and misleads everyone.
 
-Write the state into a new section of `mcu/levelBoard/README.md` and a
+Write the state into `mcu/<board>/README.md` and a
 `PLAN.md` table like the levelBoard's, with the open functions, their
 addresses and sizes. Then the loop in the skill applies unchanged.

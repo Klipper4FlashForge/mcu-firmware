@@ -103,7 +103,7 @@ Then hypotheses, ranked, each as a concrete edit (file, function, the
 lines before and after), the divergence it targets, and what score change
 to expect. Three at most; say which one to try first and why. Say plainly
 when a divergence has no source-level explanation you can find, and note
-what was already ruled out in `mcu/levelBoard/README.md` so nobody
+what was already ruled out in `mcu/levelBoard/notes/recovery-log.md` so nobody
 retries it.
 
 Community practice you should also draw on (the matching-decompilation

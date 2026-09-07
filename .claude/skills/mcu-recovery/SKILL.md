@@ -10,7 +10,7 @@ description: The map of the FlashForge MCU firmware recovery (tools) - the level
 26,704 bytes, MD5 `156366b40ccc51f5768e083fa8ead210`, zero differing
 bytes, 247/247 functions and 7,093/7,093 instructions at stock's own
 addresses, 54/54 handlers, dictionary and identify blob exact.
-`mcu/levelBoard/README.md` is the full account; `PLAN.md` is the
+`mcu/levelBoard/notes/recovery-log.md` is the full account; `PLAN.md` is the
 finished record plus the one open question. This file is the part every
 agent needs in its head.
 

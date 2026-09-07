@@ -13,7 +13,8 @@ You keep the written record equal to the tree. Read
 | fact | file |
 |---|---|
 | scores, open functions, next hypotheses, what was ruled out this round | `mcu/levelBoard/PLAN.md` |
-| how a function was closed, a compiler behaviour that decided layout, an experiment ruled out for good | `mcu/levelBoard/README.md` ("How close it gets" and its subsections) |
+| how a function was closed, a compiler behaviour that decided layout, an experiment ruled out for good | `mcu/levelBoard/notes/recovery-log.md` |
+| the headline result, or a fact a first-time reader needs | `mcu/levelBoard/README.md` — keep it short; detail belongs in the log |
 | what a contributor to the wider repo needs (the board is Klipper, headline numbers, three things worth knowing) | `docs/provenance.md` |
 | the eddy module's semantics, cited by stock address | `mcu/levelBoard/notes/eddy-sensor.md` |
 | how to continue next session: state, levers, what not to repeat | memory `mcu-recovery-permuter-workflow.md` (update, do not duplicate) |
