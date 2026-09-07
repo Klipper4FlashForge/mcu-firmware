@@ -19,6 +19,7 @@ struct analog_in {
     uint8_t state, sample_count;
 };
 
+static volatile uint16_t analog_in_value;
 static struct task_wake analog_wake;
 
 static uint_fast8_t
@@ -87,7 +88,7 @@ command_query_analog_in(uint32_t *args)
     a->range_check_count = args[7];
     if (! a->sample_count)
         return;
-    sched_add_timer(&a->timer);
+    sched_add_timer(&a->timer, 31);
 }
 DECL_COMMAND(command_query_analog_in,
              "query_analog_in oid=%c clock=%u sample_ticks=%u sample_count=%c"
@@ -112,6 +113,7 @@ analog_in_task(void)
         uint32_t next_begin_time = a->next_begin_time;
         a->state++;
         irq_enable();
+        analog_in_value = value;
         sendf("analog_in_state oid=%c next_clock=%u value=%hu"
               , oid, next_begin_time, value);
     }
@@ -129,7 +131,7 @@ analog_in_shutdown(void)
             a->state = a->sample_count + 1;
             a->next_begin_time += a->rest_time;
             a->timer.waketime = a->next_begin_time;
-            sched_add_timer(&a->timer);
+            sched_add_timer(&a->timer, 0);
         }
     }
 }

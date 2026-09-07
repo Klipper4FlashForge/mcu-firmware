@@ -14,6 +14,16 @@
 #include "command.h" // shutdown
 #include "sched.h" // sched_check_periodic
 #include "stepper.h" // stepper_event
+#include "ff_flashforge.h" // ff_eddy state
+
+extern uint8_t ff_eddy_calibrated;
+extern uint32_t ff_eddy_sample_ref;
+extern struct task_wake ff_eddy_wake;
+extern void ff_eddy_check_trigger(void);
+void noinline ff_report_close(void);
+
+uint32_t ff_close_num, ff_temp_waketime;
+static uint32_t task_start;
 
 static struct timer periodic_timer, sentinel_timer, deleted_timer;
 
@@ -22,6 +32,26 @@ static struct {
     int8_t tasks_status;
     uint8_t shutdown_status, shutdown_reason;
 } SchedStatus = {.timer_list = &periodic_timer, .last_insert = &periodic_timer};
+
+// Invoke all shutdown functions (as declared by DECL_SHUTDOWN)
+static void
+run_shutdown(int reason)
+{
+    irq_disable();
+    uint32_t cur = timer_read_time();
+    if (!SchedStatus.shutdown_status)
+        SchedStatus.shutdown_reason = reason;
+    SchedStatus.shutdown_status = 2;
+    sched_timer_reset();
+    extern void ctr_run_shutdownfuncs(void);
+    ctr_run_shutdownfuncs();
+    SchedStatus.shutdown_status = 1;
+    irq_enable();
+
+    ff_report_close();
+    sendf("shutdown clock=%u static_string_id=%hu", cur
+          , SchedStatus.shutdown_reason);
+}
 
 
 /****************************************************************
@@ -47,23 +77,22 @@ static struct timer periodic_timer = {
     .next = &sentinel_timer,
 };
 
-// The sentinel timer is always the last timer on timer_list - its
-// presence allows the code to avoid checking for NULL while
-// traversing timer_list.  Since sentinel_timer.waketime is always
-// equal to (periodic_timer.waketime + 0x80000000) any added timer
-// must always have a waketime less than one of these two timers.
 static uint_fast8_t
-sentinel_event(struct timer *t)
+ff_eddy_timer_event(struct timer *t)
 {
-    shutdown("sentinel timer called");
+    ff_eddy_update();
+    if (ff_eddy_calibrated == 1 && !ff_eddy_armed) {
+        ff_eddy_armed = 1;
+        ff_eddy_sample_ref = ff_eddy_baseline;
+        ff_eddy_dbg_baseline = ff_eddy_baseline;
+    }
+    t->waketime += timer_from_us(500);
+    return SF_RESCHEDULE;
 }
 
-static struct timer sentinel_timer = {
-    .func = sentinel_event,
-    .waketime = 0x80000000,
-};
-
 // Find position for a timer in timer_list and insert it
+DECL_CTR("_DECL_STATIC_STR sentinel timer called");
+DECL_CTR("_DECL_STATIC_STR Timer too close");
 static void __always_inline
 insert_timer(struct timer *pos, struct timer *t, uint32_t waketime)
 {
@@ -79,31 +108,6 @@ insert_timer(struct timer *pos, struct timer *t, uint32_t waketime)
     }
     t->next = pos;
     prev->next = t;
-}
-
-// Schedule a function call at a supplied time.
-void
-sched_add_timer(struct timer *add)
-{
-    uint32_t waketime = add->waketime;
-    irqstatus_t flag = irq_save();
-    struct timer *tl = SchedStatus.timer_list;
-    if (unlikely(timer_is_before(waketime, tl->waketime))) {
-        // This timer is before all other scheduled timers
-        if (timer_is_before(waketime, timer_read_time()))
-            try_shutdown("Timer too close");
-        if (tl == &deleted_timer)
-            add->next = deleted_timer.next;
-        else
-            add->next = tl;
-        deleted_timer.waketime = waketime;
-        deleted_timer.next = add;
-        SchedStatus.timer_list = &deleted_timer;
-        timer_kick();
-    } else {
-        insert_timer(tl, add, waketime);
-    }
-    irq_restore(flag);
 }
 
 // The deleted timer is used when deleting an active timer.
@@ -234,12 +238,12 @@ sched_check_wake(struct task_wake *w)
 static void
 run_tasks(void)
 {
-    uint32_t start = timer_read_time();
+    task_start = timer_read_time();
     for (;;) {
         // Check if can sleep
         irq_poll();
         if (SchedStatus.tasks_status != TS_REQUESTED) {
-            start -= timer_read_time();
+            task_start -= timer_read_time();
             irq_disable();
             if (SchedStatus.tasks_status != TS_REQUESTED) {
                 // Sleep processor (only run timers) until tasks woken
@@ -249,7 +253,7 @@ run_tasks(void)
                 } while (SchedStatus.tasks_status != TS_REQUESTED);
             }
             irq_enable();
-            start += timer_read_time();
+            task_start += timer_read_time();
         }
         SchedStatus.tasks_status = TS_RUNNING;
 
@@ -259,8 +263,10 @@ run_tasks(void)
 
         // Update statistics
         uint32_t cur = timer_read_time();
-        stats_update(start, cur);
-        start = cur;
+        stats_update(task_start, cur);
+        task_start = cur;
+        if (sched_check_wake(&ff_eddy_wake))
+            ff_eddy_check_trigger();
     }
 }
 
@@ -276,42 +282,57 @@ sched_is_shutdown(void)
     return !!SchedStatus.shutdown_status;
 }
 
-// Transition out of shutdown state
-void
-sched_clear_shutdown(void)
+void noinline
+ff_report_close(void)
 {
-    if (!SchedStatus.shutdown_status)
-        shutdown("Shutdown cleared when not shutdown");
-    if (SchedStatus.shutdown_status == 2)
-        // Ignore attempt to clear shutdown if still processing shutdown
-        return;
-    SchedStatus.shutdown_status = 0;
-}
-
-// Invoke all shutdown functions (as declared by DECL_SHUTDOWN)
-static void
-run_shutdown(int reason)
-{
-    irq_disable();
-    uint32_t cur = timer_read_time();
-    if (!SchedStatus.shutdown_status)
-        SchedStatus.shutdown_reason = reason;
-    SchedStatus.shutdown_status = 2;
-    sched_timer_reset();
-    extern void ctr_run_shutdownfuncs(void);
-    ctr_run_shutdownfuncs();
-    SchedStatus.shutdown_status = 1;
-    irq_enable();
-
-    sendf("shutdown clock=%u static_string_id=%hu", cur
-          , SchedStatus.shutdown_reason);
+    command_sendf(ctr_lookup_encoder(
+                      "Levelboard close=%hu Close_num=%hu Temp_waketime=%hu")
+                  , ff_timer_close, ff_close_num, ff_temp_waketime);
 }
 
 // Report the last shutdown reason code
 void
 sched_report_shutdown(void)
 {
-    sendf("is_shutdown static_string_id=%hu", SchedStatus.shutdown_reason);
+    command_sendf(ctr_lookup_encoder(
+                      "Levelboard close=%hu Close_num=%hu Temp_waketime=%hu")
+                  , ff_timer_close, ff_close_num, ff_temp_waketime);
+    command_sendf(ctr_lookup_encoder("is_shutdown static_string_id=%hu")
+                  , SchedStatus.shutdown_reason);
+}
+DECL_CTR("_DECL_ENCODER is_shutdown static_string_id=%hu");
+
+static jmp_buf shutdown_jmp;
+
+// Force the machine to immediately run the shutdown handlers
+void
+sched_shutdown(uint_fast8_t reason)
+{
+    irq_disable();
+    longjmp(shutdown_jmp, reason);
+}
+
+// The sentinel timer is always the last timer on timer_list.
+static uint_fast8_t
+sentinel_event(struct timer *t)
+{
+        sched_shutdown(ctr_lookup_static_string("sentinel timer called"));
+}
+
+static struct timer sentinel_timer = {
+    .func = sentinel_event,
+    .waketime = 0x80000000,
+};
+
+// Transition out of shutdown state
+void
+sched_clear_shutdown(void)
+{
+    if (!SchedStatus.shutdown_status)
+        shutdown_ec(22, "Shutdown cleared when not shutdown");
+    if (SchedStatus.shutdown_status == 2)
+        return;
+    SchedStatus.shutdown_status = 0;
 }
 
 // Shutdown the machine if not already in the process of shutting down
@@ -322,14 +343,46 @@ sched_try_shutdown(uint_fast8_t reason)
         sched_shutdown(reason);
 }
 
-static jmp_buf shutdown_jmp;
-
-// Force the machine to immediately run the shutdown handlers
+// Schedule a function call at a supplied time.
 void
-sched_shutdown(uint_fast8_t reason)
+sched_add_timer(struct timer *add, uint8_t tag)
 {
-    irq_disable();
-    longjmp(shutdown_jmp, reason);
+    uint32_t waketime = add->waketime;
+    irqstatus_t flag = irq_save();
+    struct timer *tl = SchedStatus.timer_list;
+    if (unlikely(timer_is_before(waketime, tl->waketime))) {
+        uint32_t cur = timer_read_time();
+        if (timer_is_before(waketime, cur)) {
+            // Stock writes these the other way round from what the report's
+            // field names suggest: the requested wake time lands in the
+            // variable reported as Temp_waketime and the current time in
+            // Close_num.  Reproduced as found.
+            ff_temp_waketime = waketime;
+            ff_close_num = cur;
+            ff_timer_close = tag;
+            sched_try_shutdown(ctr_lookup_static_string("Timer too close"));
+        }
+        if (tl == &deleted_timer)
+            add->next = deleted_timer.next;
+        else
+            add->next = tl;
+        deleted_timer.waketime = waketime;
+        deleted_timer.next = add;
+        SchedStatus.timer_list = &deleted_timer;
+        timer_kick();
+    } else {
+        insert_timer(tl, add, waketime);
+    }
+    irq_restore(flag);
+}
+
+void
+ff_eddy_timer_init(void)
+{
+    ff_eddy_timer.func = ff_eddy_timer_event;
+    ff_eddy_timer.waketime = timer_read_time() + timer_from_us(500);
+    ff_eddy_timer.next = NULL;
+    sched_add_timer(&ff_eddy_timer, 98);
 }
 
 
@@ -343,6 +396,12 @@ sched_main(void)
 {
     extern void ctr_run_initfuncs(void);
     ctr_run_initfuncs();
+    extern void ff_eddy_pin_init(void);
+    extern void ff_eddy_counter_init(void);
+    extern void ff_eddy_timer_init(void);
+    ff_eddy_pin_init();
+    ff_eddy_counter_init();
+    ff_eddy_timer_init();
 
     sendf("starting");
 

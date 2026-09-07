@@ -87,7 +87,7 @@ trsync_add_signal(struct trsync *ts, struct trsync_signal *tss
 {
     irqstatus_t flag = irq_save();
     if (tss->func || !func)
-        shutdown("Can't add signal that is already active");
+        shutdown_ec(1, "Can't add signal that is already active");
     tss->func = func;
     tss->next = ts->signals;
     ts->signals = tss;
@@ -121,7 +121,7 @@ command_trsync_start(uint32_t *args)
     ts->report_time.waketime = args[1];
     ts->report_ticks = args[2];
     if (ts->report_ticks)
-        sched_add_timer(&ts->report_time);
+        sched_add_timer(&ts->report_time, 29);
     ts->expire_reason = args[3];
     irq_enable();
 }
@@ -138,7 +138,7 @@ command_trsync_set_timeout(uint32_t *args)
     if (flags & TSF_CAN_TRIGGER) {
         sched_del_timer(&ts->expire_time);
         ts->expire_time.waketime = args[1];
-        sched_add_timer(&ts->expire_time);
+        sched_add_timer(&ts->expire_time, 28);
     }
     irq_enable();
 }

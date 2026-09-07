@@ -8,6 +8,7 @@
 #include "board/gpio.h" // struct gpio
 #include "board/irq.h" // irq_disable
 #include "command.h" // DECL_COMMAND
+#include "ff_flashforge.h" // ff_endstop_active
 #include "sched.h" // struct timer
 #include "trsync.h" // trsync_do_trigger
 
@@ -24,7 +25,7 @@ enum { ESF_PIN_HIGH=1<<0, ESF_HOMING=1<<1 };
 static uint_fast8_t endstop_oversample_event(struct timer *t);
 
 // Timer callback for an end stop
-static uint_fast8_t
+uint_fast8_t
 endstop_event(struct timer *t)
 {
     struct endstop *e = container_of(t, struct endstop, time);
@@ -81,18 +82,29 @@ command_endstop_home(uint32_t *args)
     e->sample_time = args[2];
     e->sample_count = args[3];
     if (!e->sample_count) {
-        // Disable end stop checking
-        e->ts = NULL;
+        // Disable end stop checking and let the eddy current sampler run
+        // freely again.  ff_eddy_pin_state is set through a pointer whose
+        // provenance the compiler cannot follow back to the symbol: that
+        // makes the store alias e->ts, which keeps the post-reload scheduler
+        // from sinking "e->ts = NULL" past it.  Writing the flag by name
+        // lets the scheduler swap the last two stores.
+        uint8_t *free_run;
+        __asm__("" : "=r"(free_run) : "0"(&ff_eddy_pin_state));
         e->flags = 0;
+        ff_endstop_active = 0;
+        e->ts = NULL;
+        *free_run = 1;
         return;
     }
-    e->rest_time = args[4];
+    ff_eddy_home_reset();
+    ff_endstop_active = 1;
     e->time.func = endstop_event;
+    e->rest_time = args[4];
     e->trigger_count = e->sample_count;
     e->flags = ESF_HOMING | (args[5] ? ESF_PIN_HIGH : 0);
     e->ts = trsync_oid_lookup(args[6]);
     e->trigger_reason = args[7];
-    sched_add_timer(&e->time);
+    sched_add_timer(&e->time, 1);
 }
 DECL_COMMAND(command_endstop_home,
              "endstop_home oid=%c clock=%u sample_ticks=%u sample_count=%c"
@@ -101,15 +113,45 @@ DECL_COMMAND(command_endstop_home,
 void
 command_endstop_query_state(uint32_t *args)
 {
+    ff_endstop_active = 1;
     uint8_t oid = args[0];
     struct endstop *e = oid_lookup(oid, command_config_endstop);
 
     irq_disable();
-    uint8_t eflags = e->flags;
     uint32_t nextwake = e->nextwake;
+    uint8_t eflags = e->flags;
     irq_enable();
 
     sendf("endstop_state oid=%c homing=%c next_clock=%u pin_value=%c"
           , oid, !!(eflags & ESF_HOMING), nextwake, gpio_in_read(e->pin));
+    // Stock stores 1 to this flag on entry and 0 on exit; the exit store is
+    // what makes the function 96 bytes rather than 88.
+    ff_endstop_active = 0;
 }
 DECL_COMMAND(command_endstop_query_state, "endstop_query_state oid=%c");
+
+// FlashForge addition, recovered from levelBoard.hex (0x080055c8).  Re-arms
+// an endstop after a homing attempt: the trigger counter is reloaded from
+// the sample count, the trsync is dropped and the endstop is taken out of
+// homing.
+//
+// NOTE: the stock firmware calls ctr_lookup_encoder() directly here rather
+// than going through the sendf() macro.  That skips the DECL_CTR marker, so
+// "endstop_recover_state oid=%c ok=%c" is never registered as a response and
+// the lookup returns NULL at run time.  Reproduced verbatim so that the
+// generated data dictionary matches the stock firmware.
+void
+command_endstop_recover_state(uint32_t *args)
+{
+    uint8_t oid = args[0];
+    struct endstop *e = oid_lookup(oid, command_config_endstop);
+    sched_del_timer(&e->time);
+    e->trigger_count = e->sample_count;
+    e->ts = NULL;
+    e->flags = 0;
+    ff_endstop_active = 0;
+    ff_eddy_home_reset();
+    command_sendf(ctr_lookup_encoder("endstop_recover_state oid=%c ok=%c")
+                  , oid, 1);
+}
+DECL_COMMAND(command_endstop_recover_state, "endstop_recover_state oid=%c");

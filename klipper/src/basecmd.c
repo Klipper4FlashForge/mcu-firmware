@@ -10,6 +10,7 @@
 #include "board/misc.h" // alloc_maxsize
 #include "board/pgm.h" // READP
 #include "command.h" // DECL_COMMAND
+#include "ff_flashforge.h" // ff_eddy
 #include "sched.h" // sched_clear_shutdown
 
 
@@ -31,7 +32,7 @@ void *
 alloc_chunk(size_t size)
 {
     if (alloc_end + size > dynmem_end())
-        shutdown("alloc_chunk failed");
+        shutdown_ec(40, "alloc_chunk failed");
     void *data = alloc_end;
     alloc_end += ALIGN(size, __alignof__(void*));
     memset(data, 0, size);
@@ -47,7 +48,7 @@ alloc_chunks(size_t size, size_t count, uint16_t *avail)
     while (can_alloc < count && p + size <= end)
         can_alloc++, p += size;
     if (!can_alloc)
-        shutdown("alloc_chunks failed");
+        shutdown_ec(41, "alloc_chunks failed");
     void *data = alloc_chunk(p - alloc_end);
     *avail = can_alloc;
     return data;
@@ -87,7 +88,7 @@ move_alloc(void)
     irqstatus_t flag = irq_save();
     struct move_node *mf = move_free_list;
     if (!mf)
-        shutdown("Move queue overflow");
+        shutdown_ec(42, "Move queue overflow");
     move_free_list = mf->next;
     irq_restore(flag);
     return mf;
@@ -144,7 +145,7 @@ move_queue_setup(struct move_queue_head *mh, int size)
     mh->first = mh->last = NULL;
 
     if (size > UINT8_MAX || is_finalized())
-        shutdown("Invalid move request size");
+        shutdown_ec(43, "Invalid move request size");
     if (size > move_item_size)
         move_item_size = size;
 }
@@ -170,7 +171,7 @@ static void
 move_finalize(void)
 {
     if (is_finalized())
-        shutdown("Already finalized");
+        shutdown_ec(44, "Already finalized");
     struct move_queue_head dummy;
     move_queue_setup(&dummy, sizeof(*move_free_list));
     move_list = alloc_chunks(move_item_size, 1024, &move_count);
@@ -193,7 +194,7 @@ void *
 oid_lookup(uint8_t oid, void *type)
 {
     if (oid >= oid_count || type != oids[oid].type)
-        shutdown("Invalid oid type");
+        shutdown_ec(45, "Invalid oid type");
     return oids[oid].data;
 }
 
@@ -201,7 +202,7 @@ void *
 oid_alloc(uint8_t oid, void *type, uint16_t size)
 {
     if (oid >= oid_count || oids[oid].type || is_finalized())
-        shutdown("Can't assign oid");
+        shutdown_ec(46, "Can't assign oid");
     oids[oid].type = type;
     void *data = alloc_chunk(size);
     oids[oid].data = data;
@@ -227,7 +228,7 @@ void
 command_allocate_oids(uint32_t *args)
 {
     if (oids)
-        shutdown("oids already allocated");
+        shutdown_ec(47, "oids already allocated");
     uint8_t count = args[0];
     oids = alloc_chunk(sizeof(oids[0]) * count);
     oid_count = count;
@@ -336,19 +337,33 @@ stats_update(uint32_t start, uint32_t cur)
  * Misc commands
  ****************************************************************/
 
+// Stock's .text order for this block is NOT the order the message ids
+// demand.  The two are set by different machinery and are decoupled here:
+//
+//   .text order  = the order GCC emits the function bodies, which for this
+//                  compiler and this TU is plain lexical definition order
+//                  (-ffunction-sections, and the link keeps object order).
+//   .ctr order   = the order the DECL_CTR markers land in
+//                  .compile_time_request, which is *reverse* lexical order,
+//                  and which is all buildcommands.py sees when it numbers
+//                  commands (all DECL_COMMANDs first) and responses.
+//
+// So the bodies below sit in stock's .text order, and every marker whose
+// id would otherwise move is restated afterwards in the order the stock
+// dictionary requires.  A restated marker wins because it is later in the
+// file, hence earlier in .ctr.
+
 void
 command_emergency_stop(uint32_t *args)
 {
-    shutdown("Command request");
+    shutdown_ec(49, "Command request");
 }
-DECL_COMMAND_FLAGS(command_emergency_stop, HF_IN_SHUTDOWN, "emergency_stop");
 
 void
 command_clear_shutdown(uint32_t *args)
 {
     sched_clear_shutdown();
 }
-DECL_COMMAND_FLAGS(command_clear_shutdown, HF_IN_SHUTDOWN, "clear_shutdown");
 
 void
 command_identify(uint32_t *args)
@@ -363,5 +378,104 @@ command_identify(uint32_t *args)
     sendf("identify_response offset=%u data=%.*s"
           , offset, count, &command_identify_data[offset]);
 }
+
+
+/****************************************************************
+ * FlashForge additions
+ ****************************************************************/
+
+// Both PA bodies fold away on every board except the eBoard; the response
+// stays in the data dictionary because DECL_CTR survives dead code
+// elimination.  That is what the stock levelBoard image shows: two "bx lr"
+// handlers and a live "pa_value value=%u" encoder.
+void
+command_get_emcu_pa_value(uint32_t *args)
+{
+    if (!CONFIG_FF_BOARD_EBOARD)
+        return;
+    sendf("pa_value value=%u", ff_pa_value);
+}
+
+void
+command_pa_action(uint32_t *args)
+{
+    if (!CONFIG_FF_BOARD_EBOARD)
+        return;
+    ff_pa_action(args[0], args[1]);
+}
+
+void
+command_remove_peel(uint32_t *args)
+{
+    // args[0] ("action") is accepted and ignored by the stock firmware.
+    // The eddy front end updates both of these from the DMA interrupt, so
+    // they are read as volatile: that is what keeps the peel read ahead of
+    // the live-value read, which is the order stock's instructions have.
+    int32_t peel = ff_eddy_peel;
+    ff_eddy_baseline = ff_eddy_value;
+    sendf("peel_data value=%i", peel);
+}
+
+// levelBoard.hex reports these three constants verbatim.
+#define FF_MCU_YEAR     2026
+#define FF_MCU_DATE      613
+#define FF_MCU_VERSION  7091
+
+void
+command_get_mcu_version(uint32_t *args)
+{
+    sendf("mcu_version year=%u date=%u version=%u"
+          , FF_MCU_YEAR, FF_MCU_DATE, FF_MCU_VERSION);
+}
+
+void
+command_get_basic_param(uint32_t *args)
+{
+    // args[0] ("num") is accepted and ignored by the stock firmware.
+    uint32_t baseline = ff_eddy_baseline, value = ff_eddy_value;
+    ff_eddy_rebaseline();
+    int32_t diff = (int32_t)(value - baseline);
+    // The absolute value is written as a ternary because that is the form
+    // stock's instructions show: GCC 10.3 at -O2 if-converts it to
+    // cmp/it lt/neglt and schedules the subs after the ctr_lookup_encoder
+    // call, where an if statement gets the branchless eor/sub idiom instead.
+    sendf("param_value value=%u reserve=%u", baseline, diff < 0 ? -diff : diff);
+}
+
+void
+command_set_trigger_threshold(uint32_t *args)
+{
+    ff_trigger_threshold = args[0];
+    ff_eddy_threshold = ff_trigger_threshold;
+    sendf("trigger_threshold threshold=%i", ff_trigger_threshold);
+}
+
+
+// Response ids.  Reversed, this is the order the stock dictionary numbers
+// them in; the copies inside the bodies above land further down the .ctr
+// and are ignored, because an id is handed out on first appearance.
+// identify_response has a fixed id, so its position only decides when its
+// parameter-type table is numbered: after the five FlashForge responses,
+// which is where stock's command_parameters7 puts it.
+DECL_CTR("_DECL_ENCODER identify_response offset=%u data=%.*s");
+DECL_CTR("_DECL_ENCODER peel_data value=%i");
+DECL_CTR("_DECL_ENCODER pa_value value=%u");
+DECL_CTR("_DECL_ENCODER param_value value=%u reserve=%u");
+DECL_CTR("_DECL_ENCODER mcu_version year=%u date=%u version=%u");
+DECL_CTR("_DECL_ENCODER trigger_threshold threshold=%i");
+
+// Command ids.  Reversed, this is 1=identify, 2..7 the FlashForge block,
+// 8=clear_shutdown, 9=emergency_stop, as the stock image has them.
+DECL_COMMAND_FLAGS(command_emergency_stop, HF_IN_SHUTDOWN, "emergency_stop");
+DECL_COMMAND_FLAGS(command_clear_shutdown, HF_IN_SHUTDOWN, "clear_shutdown");
+DECL_COMMAND(command_remove_peel, "remove_peel action=%u");
+DECL_COMMAND(command_get_emcu_pa_value, "get_emcu_pa_value");
+DECL_COMMAND(command_pa_action, "pa_action action=%u pc=%u");
+DECL_COMMAND(command_get_basic_param, "get_basic_param num=%u");
+DECL_COMMAND(command_get_mcu_version, "get_mcu_version");
+DECL_COMMAND(command_set_trigger_threshold
+             , "set_trigger_threshold threshold=%i");
 DECL_COMMAND_FLAGS(command_identify, HF_IN_SHUTDOWN,
                    "identify offset=%u count=%c");
+
+DECL_CTR("_DECL_ENCODER Levelboard close=%hu Close_num=%hu Temp_waketime=%hu");

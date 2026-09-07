@@ -20,7 +20,8 @@ MCU_UPPER := $(shell echo $(CONFIG_MCU) | tr a-z A-Z | tr X x)
 
 CFLAGS-$(CONFIG_MACH_STM32F0) += -mcpu=cortex-m0 -Ilib/stm32f0/include
 CFLAGS-$(CONFIG_MACH_STM32F103) += -mcpu=cortex-m3
-CFLAGS-$(CONFIG_MACH_N32G45x) += -mcpu=cortex-m4 -Ilib/n32g45x/include
+CFLAGS-$(CONFIG_MACH_N32G45x) += -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 \
+    -mfloat-abi=softfp -DCORE_CM4 -D__FPU_PRESENT=1 -Ilib/n32g45x/include
 CFLAGS-$(CONFIG_MACH_STM32F1) += -Ilib/stm32f1/include
 CFLAGS-$(CONFIG_MACH_STM32F2) += -mcpu=cortex-m3 -Ilib/stm32f2/include
 CFLAGS-$(CONFIG_MACH_STM32F4) += -mcpu=cortex-m4 -Ilib/stm32f4/include
@@ -31,14 +32,15 @@ CFLAGS-$(CONFIG_MACH_STM32H7) += -mcpu=cortex-m7 -Ilib/stm32h7/include
 CFLAGS-$(CONFIG_MACH_STM32L4) += -mcpu=cortex-m4 -Ilib/stm32l4/include
 CFLAGS += $(CFLAGS-y) -D$(MCU_UPPER) -mthumb -Ilib/cmsis-core -Ilib/fast-hash
 
-CFLAGS_klipper.elf += -nostdlib -lgcc -lc_nano
+CFLAGS_klipper.elf += -nodefaultlibs -lgcc -lc_nano
 CFLAGS_klipper.elf += -T $(OUT)src/generic/armcm_link.ld
 $(OUT)klipper.elf: $(OUT)src/generic/armcm_link.ld
 
 # Add source files
 src-y += stm32/watchdog.c stm32/gpio.c stm32/clockline.c stm32/dfu_reboot.c
 src-y += generic/crc16_ccitt.c
-src-y += generic/armcm_boot.c generic/armcm_irq.c generic/armcm_reset.c
+src-y += generic/armcm_boot.c generic/armcm_faults.c generic/armcm_irq.c \
+    generic/armcm_reset.c
 src-$(CONFIG_MACH_STM32F0) += ../lib/stm32f0/system_stm32f0xx.c
 src-$(CONFIG_MACH_STM32F0) += generic/timer_irq.c stm32/stm32f0_timer.c
 src-$(CONFIG_MACH_STM32F0) += stm32/stm32f0.c stm32/gpioperiph.c
@@ -46,7 +48,8 @@ src-$(CONFIG_MACH_STM32F0) += stm32/stm32f0_adc.c stm32/stm32f0_i2c.c
 src-$(CONFIG_MACH_STM32F103) += ../lib/stm32f1/system_stm32f1xx.c
 src-$(CONFIG_MACH_STM32F103) += stm32/adc.c
 src-$(CONFIG_MACH_N32G45x) += ../lib/stm32f1/system_stm32f1xx.c
-src-$(CONFIG_MACH_N32G45x) += ../lib/n32g45x/n32g45x_adc.c stm32/n32g45x_adc.c
+src-$(CONFIG_MACH_N32G45x) += stm32/n32g45x_adc.c
+src-$(CONFIG_MACH_N32G45x) += ../lib/n32g45x/n32g45x_periph.c
 src-$(CONFIG_MACH_STM32F1) += stm32/stm32f1.c generic/armcm_timer.c stm32/i2c.c
 src-$(CONFIG_MACH_STM32F2) += ../lib/stm32f2/system_stm32f2xx.c
 src-$(CONFIG_MACH_STM32F2) += stm32/stm32f4.c generic/armcm_timer.c
@@ -99,7 +102,7 @@ target-y += $(OUT)klipper.bin
 
 $(OUT)klipper.bin: $(OUT)klipper.elf
 	@echo "  Creating hex file $@"
-	$(Q)$(OBJCOPY) -O binary $< $@
+	$(Q)$(OBJCOPY) -O binary --gap-fill 0xff $< $@
 
 # Flash rules
 lib/hidflash/hid-flash:

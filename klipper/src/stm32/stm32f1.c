@@ -11,6 +11,9 @@
 #include "board/misc.h" // bootloader_request
 #include "internal.h" // enable_pclock
 #include "sched.h" // sched_main
+#include "../../lib/n32g45x/include/n32g45x.h"
+
+extern void NVIC_PriorityGroupConfig(uint32_t);
 
 
 /****************************************************************
@@ -47,8 +50,9 @@ void
 gpio_clock_enable(GPIO_TypeDef *regs)
 {
     uint32_t rcc_pos = ((uint32_t)regs - APB2PERIPH_BASE) / 0x400;
-    RCC->APB2ENR |= 1 << rcc_pos;
-    RCC->APB2ENR;
+    volatile uint32_t *ahbpclken = (volatile uint32_t *)0x40021014;
+    *ahbpclken |= 1 << rcc_pos;
+    *ahbpclken;
 }
 
 // Main clock setup called at chip startup
@@ -113,101 +117,43 @@ stm32f1_alternative_remap(uint32_t mapr_mask, uint32_t mapr_value)
 void
 gpio_peripheral(uint32_t gpio, uint32_t mode, int pullup)
 {
-    GPIO_TypeDef *regs = digital_regs[GPIO2PORT(gpio)];
+    GPIO_Module *r = (GPIO_Module *)digital_regs[GPIO2PORT(gpio)];
+    volatile uint32_t *rcc = (volatile uint32_t *)0x40021014;
+    uint32_t bit = ((uint32_t)r + 0xbfff0000) >> 10;
+    *rcc |= 1 << bit;
+    *rcc;
 
-    // Enable GPIO clock
-    gpio_clock_enable(regs);
-
-    // Configure GPIO
-    uint32_t pos = gpio % 16, shift = (pos % 8) * 4, msk = 0xf << shift, cfg;
-    if (mode == GPIO_INPUT) {
-        cfg = pullup ? 0x8 : 0x4;
-    } else if (mode == GPIO_OUTPUT) {
-        cfg = STM_OSPEED;
-    } else if (mode == (GPIO_OUTPUT | GPIO_OPEN_DRAIN)) {
-        cfg = 0x4 | STM_OSPEED;
-    } else if (mode == GPIO_ANALOG) {
-        cfg = 0x0;
+    uint32_t pos = gpio & 15, shift = (pos & 7) * 4;
+    // The stock port spells the two AF register paths separately.  It also
+    // shifts the GPIO register value itself into the AF field; retain that
+    // original quirk for binary and behavioral fidelity.
+    // The branch probabilities decide where GCC parks the two out-of-line
+    // blocks (the AFL write and the POTYPE write) relative to each other and
+    // to the pullup tail; these weights reproduce stock's block order.
+    if (__builtin_expect_with_probability(!!(pos & 8), 1, 0.6)) {
+        uint32_t af = r->AFH & ~(0xf << shift);
+        af |= (uint32_t)r << shift;
+        r->AFH = af;
     } else {
-        if (mode & GPIO_OPEN_DRAIN)
-            // Alternate function with open-drain mode
-            cfg = 0xc | STM_OSPEED;
-        else if (pullup > 0)
-            // Alternate function input pins use GPIO_INPUT mode on the stm32f1
-            cfg = 0x8;
-        else
-            cfg = 0x8 | STM_OSPEED;
+        uint32_t af = r->AFL & ~(0xf << shift);
+        af |= (uint32_t)r << shift;
+        r->AFL = af;
     }
-    if (pos & 0x8)
-        regs->CRH = (regs->CRH & ~msk) | (cfg << shift);
-    else
-        regs->CRL = (regs->CRL & ~msk) | (cfg << shift);
 
-    if (pullup > 0)
-        regs->BSRR = 1 << pos;
-    else if (pullup < 0)
-        regs->BSRR = 1 << (pos + 16);
-
-    if (gpio == GPIO('A', 13) || gpio == GPIO('A', 14))
-        // Disable SWD to free PA13, PA14
-        stm32f1_alternative_remap(AFIO_MAPR_SWJ_CFG_Msk,
-                                  AFIO_MAPR_SWJ_CFG_DISABLE);
-
-    // STM32F1 remaps functions to pins in a very different
-    // way from other STM32s.
-    // Code below is emulating a few mappings to work like an STM32F4
-    uint32_t func = (mode >> 4) & 0xf;
-    if (func == 1) {
-        // TIM2
-        if (gpio == GPIO('A', 15) || gpio == GPIO('B', 3))
-            stm32f1_alternative_remap(AFIO_MAPR_TIM2_REMAP_Msk,
-                                      AFIO_MAPR_TIM2_REMAP_PARTIALREMAP1);
-        else if (gpio == GPIO('B', 10) || gpio == GPIO('B', 11))
-            stm32f1_alternative_remap(AFIO_MAPR_TIM2_REMAP_Msk,
-                                      AFIO_MAPR_TIM2_REMAP_PARTIALREMAP2);
-    } else if (func == 2) {
-        // TIM3 and TIM4
-        if (gpio == GPIO('B', 4) || gpio == GPIO('B', 5))
-            stm32f1_alternative_remap(AFIO_MAPR_TIM3_REMAP_Msk,
-                                      AFIO_MAPR_TIM3_REMAP_PARTIALREMAP);
-        else if (gpio == GPIO('C', 6) || gpio == GPIO('C', 7)
-                 || gpio == GPIO('C', 8) || gpio == GPIO('C', 9))
-            stm32f1_alternative_remap(AFIO_MAPR_TIM3_REMAP_Msk,
-                                      AFIO_MAPR_TIM3_REMAP_FULLREMAP);
-        else if (gpio == GPIO('D', 12) || gpio == GPIO('D', 13)
-                 || gpio == GPIO('D', 14) || gpio == GPIO('D', 15))
-            stm32f1_alternative_remap(AFIO_MAPR_TIM4_REMAP_Msk,
-                                      AFIO_MAPR_TIM4_REMAP);
-    } else if (func == 4) {
-        // I2C
-        if (gpio == GPIO('B', 8) || gpio == GPIO('B', 9))
-            stm32f1_alternative_remap(AFIO_MAPR_I2C1_REMAP_Msk,
-                                      AFIO_MAPR_I2C1_REMAP);
-    } else if (func == 5) {
-        // SPI
-        if (gpio == GPIO('B', 3) || gpio == GPIO('B', 4)
-            || gpio == GPIO('B', 5))
-            stm32f1_alternative_remap(AFIO_MAPR_SPI1_REMAP_Msk,
-                                      AFIO_MAPR_SPI1_REMAP);
-    } else if (func == 7) {
-        // USART
-        if (gpio == GPIO('B', 6) || gpio == GPIO('B', 7))
-            stm32f1_alternative_remap(AFIO_MAPR_USART1_REMAP_Msk,
-                                      AFIO_MAPR_USART1_REMAP);
-        else if (gpio == GPIO('D', 5) || gpio == GPIO('D', 6))
-            stm32f1_alternative_remap(AFIO_MAPR_USART2_REMAP_Msk,
-                                      AFIO_MAPR_USART2_REMAP);
-        else if (gpio == GPIO('D', 8) || gpio == GPIO('D', 9))
-            stm32f1_alternative_remap(AFIO_MAPR_USART3_REMAP_Msk,
-                                      AFIO_MAPR_USART3_REMAP_FULLREMAP);
-    } else if (func == 9) {
-        // CAN
-        if (gpio == GPIO('B', 8) || gpio == GPIO('B', 9))
-            stm32f1_alternative_remap(AFIO_MAPR_CAN_REMAP_Msk,
-                                      AFIO_MAPR_CAN_REMAP_REMAP2);
-        if (gpio == GPIO('D', 0) || gpio == GPIO('D', 1))
-            stm32f1_alternative_remap(AFIO_MAPR_CAN_REMAP_Msk,
-                                      AFIO_MAPR_CAN_REMAP_REMAP3);
+    shift = pos * 2;
+    r->PMODE = ((mode & 3) << shift) | (r->PMODE & ~(3 << shift));
+    uint32_t mask = ~(3 << shift);
+    if ((mode & 0xffffffef) - 1 < 2)
+        r->POTYPE = (((mode & 0x1f) >> 4) << pos)
+            | (r->POTYPE & ~(1 << pos));
+    r->PUPD = (pullup << shift) | (r->PUPD & mask);
+    r->SR &= ~(1 << pos);
+    r->DS = (2 << shift) | (r->DS & mask);
+    if (__builtin_expect_with_probability(pullup < 1, 1, 0.2)) {
+        if (pullup)
+            r->PBSC = 1 << (pos + 16);
+    } else {
+        r->PBSC = 1 << pos;
     }
 }
 
@@ -240,11 +186,12 @@ usb_stm32duino_bootloader(void)
     NVIC_SystemReset();
 }
 
-// Handle reboot requests
+// Handle reboot requests.  Stock's copy is an empty function: it never
+// asks CanBoot for anything (the image sits behind FlashForge's own IAP
+// bootloader), so try_request_canboot() is not linked at all.
 void
 bootloader_request(void)
 {
-    try_request_canboot();
     if (CONFIG_STM32_FLASH_START_800)
         usb_hid_bootloader();
     else if (CONFIG_STM32_FLASH_START_2000)
@@ -260,27 +207,14 @@ bootloader_request(void)
 void
 armcm_main(void)
 {
-    // Run SystemInit() and then restore VTOR
-    SystemInit();
+    // Restore VTOR after reset-stage clock setup.
+    asm volatile("movs r3, #0\n msr primask, r3");
+    __enable_irq();
+    __DMB();
     SCB->VTOR = (uint32_t)VectorTable;
-
-    // Reset peripheral clocks (for some bootloaders that don't)
-    RCC->AHBENR = 0x14;
-    RCC->APB1ENR = 0;
-    RCC->APB2ENR = 0;
-
-    // Setup clocks
-    clock_setup();
-
-    // Disable JTAG to free PA15, PB3, PB4
-    enable_pclock(AFIO_BASE);
-    if (CONFIG_STM32F103GD_DISABLE_SWD)
-        // GigaDevice clone can't enable PA13/PA14 at runtime - enable here
-        stm32f1_alternative_remap(AFIO_MAPR_SWJ_CFG_Msk,
-                                  AFIO_MAPR_SWJ_CFG_DISABLE);
-    else
-        stm32f1_alternative_remap(AFIO_MAPR_SWJ_CFG_Msk,
-                                  AFIO_MAPR_SWJ_CFG_JTAGDISABLE);
+    __DSB();
+    __ISB();
+    NVIC_PriorityGroupConfig(0x700);
 
     sched_main();
 }

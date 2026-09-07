@@ -198,7 +198,7 @@ command_tmcuart_send(uint32_t *args)
     uint8_t *write = command_decode_ptr(args[2]);
     uint8_t read_len = args[3];
     if (write_len > sizeof(t->data) || read_len > sizeof(t->data))
-        shutdown("tmcuart data too large");
+        shutdown_ec(2, "tmcuart data too large");
     memcpy(t->data, write, write_len);
     t->pos = 0;
     t->flags = (t->flags & (TU_LINE_HIGH|TU_PULLUP|TU_SINGLE_WIRE)) | TU_ACTIVE;
@@ -212,7 +212,7 @@ command_tmcuart_send(uint32_t *args)
     }
     irq_disable();
     t->timer.waketime = timer_read_time() + timer_from_us(200);
-    sched_add_timer(&t->timer);
+    sched_add_timer(&t->timer, 51);
     irq_enable();
 }
 DECL_COMMAND(command_tmcuart_send, "tmcuart_send oid=%c write=%*s read=%c");

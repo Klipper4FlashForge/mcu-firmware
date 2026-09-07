@@ -38,11 +38,9 @@ irq_restore(irqstatus_t flag)
 void
 irq_wait(void)
 {
-    if (__CORTEX_M >= 7)
-        // Cortex-m7 may disable cpu counter on wfi, so use nop
-        asm volatile("cpsie i\n    nop\n    cpsid i\n" ::: "memory");
-    else
-        asm volatile("cpsie i\n    wfi\n    cpsid i\n" ::: "memory");
+    // The idle window is opened with a nop rather than wfi: the cpu cycle
+    // counter must keep running for the timer to stay accurate.
+    asm volatile("cpsie i\n    nop\n    cpsid i\n" ::: "memory");
 }
 
 void

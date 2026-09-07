@@ -14,9 +14,12 @@
 #include "sched.h" // sched_wake_tasks
 #include "serial_irq.h" // serial_enable_tx_irq
 
-#define RX_BUFFER_SIZE 192
+#define RX_BUFFER_SIZE 384
 
-static uint8_t receive_buf[RX_BUFFER_SIZE], receive_pos;
+// RX_BUFFER_SIZE is 384 here (upstream: 192), so the position index
+// must be wider than the uint8_t upstream uses.
+static uint8_t receive_buf[RX_BUFFER_SIZE];
+static uint16_t receive_pos;
 static uint8_t transmit_buf[96], transmit_pos, transmit_max;
 
 DECL_CONSTANT("SERIAL_BAUD", CONFIG_SERIAL_BAUD);
@@ -40,7 +43,15 @@ serial_get_tx_byte(uint8_t *pdata)
 {
     if (transmit_pos >= transmit_max)
         return -1;
-    *pdata = transmit_buf[transmit_pos++];
+    uint_fast8_t tpos = transmit_pos;
+    uint8_t data = transmit_buf[tpos];
+    uint_fast8_t npos = tpos + 1;
+    // Advance transmit_pos only after the byte has been read out of the
+    // buffer, and hand the byte back through a volatile store so that it is
+    // the last memory access of the function.
+    asm volatile("" : : "r"(npos) : "memory");
+    transmit_pos = npos;
+    writeb(pdata, data);
     return 0;
 }
 
@@ -74,7 +85,8 @@ console_pop_input(uint_fast8_t len)
 void
 console_task(void)
 {
-    uint_fast8_t rpos = readb(&receive_pos), pop_count;
+    uint_fast8_t rpos = readb(&receive_pos);
+    uint_fast8_t pop_count;
     int_fast8_t ret = command_find_block(receive_buf, rpos, &pop_count);
     if (ret > 0)
         command_dispatch(receive_buf, pop_count);

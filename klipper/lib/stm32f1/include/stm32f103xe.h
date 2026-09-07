@@ -146,7 +146,13 @@ typedef enum
   * @}
   */
 
+/* The N32G45x is a Cortex-M4F wearing an F103-compatible register map,
+   so it takes the M4 core header and has an FPU. */
+#if defined(CORE_CM4)
+#include "core_cm4.h"
+#else
 #include "core_cm3.h"
+#endif
 #include "system_stm32f1xx.h"
 #include <stdint.h>
 

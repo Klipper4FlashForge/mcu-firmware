@@ -97,7 +97,7 @@ command_config_neopixel(uint32_t *args)
     struct gpio_out pin = gpio_out_setup(args[1], 0);
     uint16_t data_size = args[2];
     if (data_size & 0x8000)
-        shutdown("Invalid neopixel data_size");
+        shutdown_ec(26, "Invalid neopixel data_size");
     struct neopixel_s *n = oid_alloc(args[0], command_config_neopixel
                                      , sizeof(*n) + data_size);
     n->pin = pin;
@@ -183,7 +183,7 @@ command_neopixel_update(uint32_t *args)
     uint_fast8_t data_len = args[2];
     uint8_t *data = command_decode_ptr(args[3]);
     if (pos & 0x8000 || pos + data_len > n->data_size)
-        shutdown("Invalid neopixel update command");
+        shutdown_ec(27, "Invalid neopixel update command");
     memcpy(&n->data[pos], data, data_len);
 }
 DECL_COMMAND(command_neopixel_update,

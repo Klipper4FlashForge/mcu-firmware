@@ -202,6 +202,9 @@ Handlers.append(HandleInitialPins())
 # ARM IRQ vector table generation
 ######################################################################
 
+# Number of external interrupt lines on the target part (N32G45x)
+ARMCM_IRQ_COUNT = 56
+
 # Create ARM IRQ vector table from interrupt handler declarations
 class Handle_arm_irq:
     def __init__(self):
@@ -222,7 +225,13 @@ class Handle_arm_irq:
             # The ResetHandler was not defined - don't build VectorTable
             return ""
         max_irq = max(self.irqs.keys())
-        table = ["    DefaultHandler,\n"] * (max_irq + armcm_offset + 1)
+        # FlashForge leave the undeclared system-exception slots null and
+        # only point the peripheral IRQ slots at DefaultHandler; stock
+        # levelBoard has zeroes at 0x010..0x034 where upstream Klipper has
+        # DefaultHandler.  armcm_offset is 16, so slots below it are the
+        # system exceptions.
+        table = (["    0,\n"] * armcm_offset
+                 + ["    DefaultHandler,\n"] * (max_irq + 1))
         defs = []
         for num, func in self.irqs.items():
             if num < 1 - armcm_offset:
@@ -230,14 +239,23 @@ class Handle_arm_irq:
             defs.append("extern void %s(void);\n" % (func,))
             table[num + armcm_offset] = "    %s,\n" % (func,)
         table[0] = "    &_stack_end,\n"
+        # FlashForge size the array for the part rather than for the highest
+        # declared handler: the N32G45x has 56 external interrupt lines, so
+        # the array is 16 + 56 = 72 words and the slots past the last
+        # initializer are zero.  Stock levelBoard has 0x00000000 at
+        # 0x08004114..0x0800411F, where a 69-word array would leave linker
+        # fill (0xff) instead.
+        tablen = armcm_offset + ARMCM_IRQ_COUNT
+        if len(table) > tablen:
+            error("VectorTable longer than %d entries" % (tablen,))
         fmt = """
 extern void DefaultHandler(void);
 extern uint32_t _stack_end;
 %s
-const void *VectorTable[] __visible __section(".vector_table") = {
+const void *VectorTable[%d] __visible __section(".vector_table") = {
 %s};
 """
-        return fmt % (''.join(defs), ''.join(table))
+        return fmt % (''.join(defs), tablen, ''.join(table))
 
 Handlers.append(Handle_arm_irq())
 
@@ -491,6 +509,12 @@ def build_version(extra, cleanbuild):
     elif 'dirty' in version:
         cleanbuild = False
     if not cleanbuild:
+        # Reproducible builds: KLIPPER_BUILD_VERSION pins the whole stamp,
+        # which otherwise carries the wall clock and this machine's hostname
+        # into the data dictionary embedded in the image.
+        forced = os.environ.get('KLIPPER_BUILD_VERSION')
+        if forced:
+            return forced + extra
         btime = time.strftime("%Y%m%d_%H%M%S")
         hostname = socket.gethostname()
         version = "%s-%s-%s" % (version, btime, hostname)
@@ -525,6 +549,28 @@ def tool_versions(tools):
         success += 1
     cleanbuild = versions[0] and versions[1] and success == len(tools)
     return cleanbuild, "gcc: %s binutils: %s" % (versions[0], versions[1])
+
+def compress_dict(data):
+    # The stock firmware was deflated with classic zlib.  Some distributions
+    # ship a Python linked against zlib-ng, whose output differs byte for
+    # byte at the same level, which changes the image.  KLIPPER_ZLIB points
+    # at a classic libz when an exact reproduction is wanted.
+    libpath = os.environ.get('KLIPPER_ZLIB')
+    if not libpath:
+        return zlib.compress(data, 9)
+    import ctypes
+    lib = ctypes.CDLL(libpath)
+    lib.compress2.restype = ctypes.c_int
+    lib.compress2.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_ulong),
+                              ctypes.c_char_p, ctypes.c_ulong, ctypes.c_int]
+    n = ctypes.c_ulong(len(data) + len(data) // 100 + 64)
+    buf = ctypes.create_string_buffer(n.value)
+    rc = lib.compress2(buf, ctypes.byref(n), ctypes.c_char_p(data),
+                       ctypes.c_ulong(len(data)), ctypes.c_int(9))
+    if rc != 0:
+        raise error("classic zlib compress2 failed: %d" % (rc,))
+    return buf.raw[:n.value]
+
 
 # Add version information to the data dictionary
 class HandleVersions:
@@ -570,7 +616,7 @@ class HandleIdentify:
             f.close()
 
         # Format compressed info into C code
-        zdatadict = bytearray(zlib.compress(datadict.encode(), 9))
+        zdatadict = bytearray(compress_dict(datadict.encode()))
         out = []
         for i in range(len(zdatadict)):
             if i % 8 == 0:

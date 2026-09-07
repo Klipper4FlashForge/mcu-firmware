@@ -56,6 +56,7 @@
   * @{
   */
 
+#include "autoconf.h"
 #include "stm32f1xx.h"
 
 /**
@@ -120,7 +121,13 @@
                is no need to call the 2 first functions listed above, since SystemCoreClock
                variable is updated automatically.
   */
+#if CONFIG_MACH_N32G45x
+// The N32 tree initialises this to the PLL frequency SystemInit() will
+// select; stock's .data holds 128000000 here.
+uint32_t SystemCoreClock = 128000000;
+#else
 uint32_t SystemCoreClock = 16000000;
+#endif
 const uint8_t AHBPrescTable[16U] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9};
 const uint8_t APBPrescTable[8U] =  {0, 0, 0, 0, 1, 2, 3, 4};
 
@@ -156,6 +163,74 @@ const uint8_t APBPrescTable[8U] =  {0, 0, 0, 0, 1, 2, 3, 4};
   */
 void SystemInit (void)
 {
+#if CONFIG_MACH_N32G45x
+  /* N32G452: RCC at 0x40021000 (CTRL 0x00, CFG 0x04, CLKINT 0x08,
+     APB1PCLKEN 0x1c, CFG2 0x2c, CFG3 0x30, PLLHSIPRE 0x40),
+     FLASH interface at 0x40022000 (AC 0x00). */
+  volatile uint32_t *rcc = (volatile uint32_t *)0x40021000;
+  volatile uint32_t *flash = (volatile uint32_t *)0x40022000;
+
+  /* Give the FPU full access (CP10/CP11) */
+  SCB->CPACR |= 0x00f00000;
+
+  /* Put the clock tree back into its reset state */
+  rcc[0] |= 1;                          /* HSIEN */
+  rcc[1] &= 0xf87fc00c;                 /* clear SCLKSW, AHB/APB and MCO */
+  rcc[0] &= 0xfef6ffff;                 /* clear HSEEN, CLKSSEN, PLLEN */
+  rcc[0] &= 0xfffbffff;                 /* clear HSEBP */
+  rcc[1] &= 0xf7c0ffff;                 /* clear PLLSRC, PLLHSEPRES, PLLMULFCT */
+  rcc[11] = 0x3800;                     /* CFG2 */
+  rcc[12] = 0;                          /* CFG3 */
+  rcc[16] = 0;                          /* PLLHSIPRE */
+  rcc[2] = 0x04bf0000;                  /* CLKINT: disable and clear every clock irq */
+  rcc[7] |= 0x10000000;                 /* pulse the APB1 PWR clock */
+  rcc[7] &= 0xefffffff;
+  flash[0] |= 0x80;                     /* prefetch buffer on */
+  flash[0] &= ~0x10;                    /* half-cycle access off */
+
+  {
+    volatile uint32_t temp;
+    volatile uint32_t PllCfg = 0;
+    volatile uint8_t HSEStatus = 0;
+    volatile uint32_t StartUpCounter = 0;
+
+    /* Start the 8 MHz crystal and wait for it, with a bounded spin */
+    rcc[0] |= 0x10000;                  /* HSEEN */
+    do {
+      HSEStatus = (rcc[0] >> 17) & 1;   /* HSERDF */
+      StartUpCounter++;
+    } while (HSEStatus == 0 && StartUpCounter != 0x2000);
+    HSEStatus = (rcc[0] >> 17) & 1;
+    if (HSEStatus != 0) {
+      /* 128 MHz from the 8 MHz crystal: 4 flash wait states, HCLK = SYSCLK,
+         PCLK2 = HCLK/2, PCLK1 = HCLK/4, PLL = HSE * 16 */
+      flash[0] &= ~7;
+      flash[0] |= 2;
+      rcc[1] |= 0;                      /* AHB prescaler: HCLK = SYSCLK */
+      rcc[1] |= 0x2000;                 /* APB2 prescaler /2 */
+      rcc[1] |= 0x500;                  /* APB1 prescaler /4 */
+      rcc[1] &= 0xf7c0ffff;             /* clear the PLL fields */
+      rcc[16] &= ~1;
+      temp = rcc[1];
+      temp |= 0x10000;                  /* PLLSRC = HSE */
+      temp |= 0x20000;                  /* PLLHSEPRES = HSE undivided */
+      temp |= 0x083c0000;               /* PLLMULFCT = 16 */
+      rcc[1] = temp;
+      rcc[16] = PllCfg;
+      rcc[0] |= 0x1000000;              /* PLLEN */
+      do {
+      } while (!(rcc[0] & 0x2000000));  /* PLLRDF */
+      rcc[1] &= ~3;
+      rcc[1] |= 2;                      /* SCLKSW = PLL */
+      do {
+      } while ((rcc[1] & 0xc) != 8);    /* wait for SCLKSTS = PLL */
+    } else {
+      SystemCoreClock = 8000000;
+    }
+  }
+
+  SCB->VTOR = 0x08000000;
+#else
   /* Reset the RCC clock configuration to the default reset state(for debug purpose) */
   /* Set HSION bit */
   RCC->CR |= 0x00000001U;
@@ -207,6 +282,7 @@ void SystemInit (void)
 #else
   SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH. */
 #endif 
+#endif
 }
 
 /**

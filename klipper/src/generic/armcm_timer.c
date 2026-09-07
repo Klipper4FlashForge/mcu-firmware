@@ -10,6 +10,7 @@
 #include "board/irq.h" // irq_disable
 #include "board/misc.h" // timer_from_us
 #include "command.h" // shutdown
+#include "n32g45x.h" // NVIC_Init
 #include "sched.h" // sched_timer_dispatch
 
 DECL_CONSTANT("CLOCK_FREQ", CONFIG_CLOCK_FREQ);
@@ -86,7 +87,9 @@ timer_reset(void)
     if (timer_from_us(100000) <= 0xffffff)
         // Timer in sched.c already ensures SysTick wont overflow
         return;
-    sched_add_timer(&wrap_timer);
+    // Tag unknown: 98 belongs to the FlashForge eddy timer (0x0800630c),
+    // and no stock call site could be attributed to this one.
+    sched_add_timer(&wrap_timer, 0);
 }
 DECL_SHUTDOWN(timer_reset);
 
@@ -103,7 +106,12 @@ timer_init(void)
 
     // Enable SysTick
     irqstatus_t flag = irq_save();
-    NVIC_SetPriority(SysTick_IRQn, 2);
+    NVIC_InitType nvic;
+    nvic.NVIC_IRQChannel = SysTick_IRQn;
+    nvic.NVIC_IRQChannelPreemptionPriority = 0;
+    nvic.NVIC_IRQChannelSubPriority = 1;
+    nvic.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&nvic);
     SysTick->CTRL = (SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk
                      | SysTick_CTRL_ENABLE_Msk);
     timer_kick();

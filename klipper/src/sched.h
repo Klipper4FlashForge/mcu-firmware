@@ -25,8 +25,12 @@ struct task_wake {
     uint8_t wake;
 };
 
+
 // sched.c
-void sched_add_timer(struct timer*);
+// FlashForge: the tag names the call site, and is reported to the
+// host as `close` if this timer is ever scheduled in the past.
+void sched_add_timer(struct timer*, uint8_t tag);
+extern uint8_t ff_timer_close;
 void sched_del_timer(struct timer *del);
 unsigned int sched_timer_dispatch(void);
 void sched_timer_reset(void);
