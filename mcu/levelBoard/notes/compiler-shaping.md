@@ -286,6 +286,27 @@ is `mode & ~GPIO_MODE_OD`, and the test `- 1 < 2` on it is
            literal pools is 0x0800910C, the same address as _init. */
 ```
 
+## src/sched.c — the dictionary ids and what can go through the macros
+
+The two static strings and two encoders that `sched.c` reports are looked
+up by name, with their `DECL_CTR` markers hoisted to file scope, because
+the id a marker gets depends on its position in `.compile_time_request`.
+Measured this round, so nobody retries it:
+
+- `shutdown("sentinel timer called")` in place of the explicit
+  `sched_shutdown(ctr_lookup_static_string(...))` costs 406 bytes, and
+  costs the same 406 whether or not the hoisted marker is kept. A
+  duplicate marker is not free: it adds a second entry and shifts every
+  id after it.
+- `try_shutdown("Timer too close")` in `sched_add_timer()`: 484 bytes.
+
+What *is* free is everything that does not touch a marker.
+`sched_report_shutdown()` now calls `ff_report_close()` instead of
+repeating its body; with `noinline` dropped from `ff_report_close` GCC
+inlines the call and emits exactly the same instructions, so the
+duplicated source was never load-bearing — the `noinline` was what made
+it look like it was.
+
 ## src/generic/armcm_link.lds.S — .bss
 
 ```
@@ -384,6 +405,9 @@ The ring copy is a plain loop, not `memcpy`: GCC turns it into the same
 analysis, and the call heuristic does not mark a branch to a pure call
 cold. That is what keeps `ff_eddy_update`'s smoothing path in line
 rather than out of it.
+
+The `noinline` on this function does nothing either, and is gone: the
+purity argument above is about the loop, not the attribute.
 
 The `__section(".text.eddy_median")` that used to sit on this function
 placed nothing and has been deleted. `ff_eddy_median` is the first

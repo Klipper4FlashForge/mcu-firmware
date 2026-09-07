@@ -9,8 +9,8 @@
 #include "board/irq.h" // irq_disable
 #include "board/misc.h" // bootloader_request
 #include "internal.h" // enable_pclock
-#include "sched.h" // sched_main
 #include "n32g45x.h" // NVIC_PriorityGroupConfig
+#include "sched.h" // sched_main
 
 
 /****************************************************************
@@ -47,7 +47,7 @@ void
 gpio_clock_enable(GPIO_Module *regs)
 {
     uint32_t rcc_pos = ((uint32_t)regs - APB2PERIPH_BASE) / 0x400;
-    volatile uint32_t *ahbpclken = (volatile uint32_t *)0x40021014;
+    volatile uint32_t *ahbpclken = &RCC->AHBENR;
     *ahbpclken |= 1 << rcc_pos;
     *ahbpclken;
 }

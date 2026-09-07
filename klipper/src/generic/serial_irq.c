@@ -17,7 +17,8 @@
 #define RX_BUFFER_SIZE 384
 
 // The receive buffer is 384 bytes, so the position index has to be wider
-// than a byte.
+// than a byte.  Note that console_task() and console_pop_input() still read
+// it with readb(), so only its low eight bits reach the command parser.
 static uint8_t receive_buf[RX_BUFFER_SIZE];
 static uint16_t receive_pos;
 static uint8_t transmit_buf[96], transmit_pos, transmit_max;

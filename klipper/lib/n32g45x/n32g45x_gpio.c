@@ -30,7 +30,7 @@ GPIO_ConfigPinMode(GPIO_Module *GPIOx, uint32_t mode, uint32_t pinpos)
     tmp |= (mode & 0x03ul) << (pinpos * 2);
     GPIOx->PMODE = tmp;
 
-    uint32_t base = mode & ~0x10ul;
+    uint32_t base = mode & ~(uint32_t)GPIO_MODE_OD;
     if (base == GPIO_MODE_OUT_PP || base == GPIO_MODE_AF_PP) {
         tmp = GPIOx->POTYPE;
         tmp &= ~(0x01ul << pinpos);

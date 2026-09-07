@@ -142,7 +142,7 @@ gpio_in_reset(struct gpio_in g, int32_t pull_up)
 // PD0 is the bed probe.  It has no port pin of its own: reads of it
 // return the eddy detector's virtual endstop level instead.
 #define FF_EDDY_ENDSTOP_PORT NS_GPIOD
-#define FF_EDDY_ENDSTOP_BIT  (1 << 0)
+#define FF_EDDY_ENDSTOP_BIT  GPIO_PIN_0
 
 uint8_t
 gpio_in_read(struct gpio_in g)

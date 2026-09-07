@@ -48,6 +48,9 @@ extern uint8_t ff_timer_close;      // call site of the last late timer
 extern uint8_t ff_endstop_active;   // an endstop is being queried or homed
 extern uint16_t analog_in_value;    // latest analog sample, for debug
 
+// One eddy sample is consumed per polling timer tick.
+#define FF_EDDY_SAMPLE_US 500
+
 // The inductive sensor.
 extern volatile uint32_t ff_eddy_value;      // live reading
 extern uint32_t ff_eddy_baseline;   // reference it is compared to
@@ -76,6 +79,7 @@ void ff_eddy_home_reset(void);
 
 // sched.c
 void ff_eddy_timer_init(void);
+void ff_report_close(void);
 
 void ff_pa_action(uint32_t action, uint32_t pc);
 

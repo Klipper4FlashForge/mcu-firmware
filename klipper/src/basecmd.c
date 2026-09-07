@@ -14,6 +14,10 @@
 #include "ff_flashforge.h" // ff_eddy
 #include "sched.h" // sched_clear_shutdown
 
+// Trigger threshold as the host set it, echoed back by
+// command_set_trigger_threshold below.
+int32_t ff_trigger_threshold = 25;
+
 
 /****************************************************************
  * Low level allocation
@@ -29,10 +33,6 @@ alloc_init(void)
 DECL_INIT(alloc_init);
 
 // Allocate an area of memory
-// Trigger threshold as the host set it, echoed back by
-// command_set_trigger_threshold below.
-int32_t ff_trigger_threshold = 25;
-
 void *
 alloc_chunk(size_t size)
 {

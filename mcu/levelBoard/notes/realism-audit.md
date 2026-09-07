@@ -216,6 +216,20 @@ read from, not in a file that claims to be firmware source. Most of the
 hardware archaeology in `ff_eddy.c`'s header is already in
 `notes/eddy-sensor.md` verbatim.
 
+Mostly done. What is left in the source is a handful of markers tied to
+the still-open entries above, and they are honest about being ours.
+Two comments that were written from outside the code now say what the
+firmware does instead of what we decided:
+`command_endstop_recover_state` carries a plain `BUG:` line — its reply
+goes out through `ctr_lookup_encoder()` rather than `sendf()`, so no
+`DECL_CTR` marker is emitted, `endstop_recover_state oid=%c ok=%c` never
+reaches the data dictionary (confirmed against the stock dictionary's 24
+responses) and the lookup returns NULL — and `serial.c`'s IRQ-52 pad
+states the length rather than apologising for it. `serial_irq.c` gained
+one of the same kind: `receive_pos` was widened to `uint16_t` for the
+384-byte buffer, but `console_task()` and `console_pop_input()` still
+read it with `readb()`, so only its low eight bits reach the parser.
+
 ---
 
 ## Closed
@@ -317,6 +331,46 @@ had, or now has beside its neighbours. 0 bytes, every one.
   `lib/n32g45x/include/n32g45x.h` in the style of the ones already there.
 - `ff_eddy_pin_init`: `1 << 1` twice → `GPIO_PIN_1`, `2` → `GPIO_DC_8MA`.
 - `ff_eddy_value_bad()` returns `bool` rather than `int`.
+- `gpio_clock_enable`: the second `(volatile uint32_t *)0x40021014` →
+  `&RCC->AHBENR`, same as the one in `gpio_peripheral`.
+- `n32g45x_adc.c`: `VREF1P2_CTRL |= (1<<10)` → a named
+  `VREF1P2_CTRL_ENVREF1P2` beside the register macro.
+- `gpio.c`: the virtual endstop's `(1 << 0)` → `GPIO_PIN_0`.
+- `n32g45x_gpio.c`: `mode & ~0x10ul` → `GPIO_MODE_OD`, the same name
+  `gpio_peripheral` now uses for the same bit.
+- `sched.c`: the two `timer_from_us(500)` for the eddy poll interval →
+  `FF_EDDY_SAMPLE_US`, which was defined in `ff_eddy.c` and never used;
+  it moved to `ff_flashforge.h` where both files can see it.
+- `armcm_startup.S`: the reset handler addressed its literal pool as
+  `.Lstartup_pool+4`, `+8`, `+12` … Each word has its own label now, and
+  the two loops have a line of comment each.
+
+**More attributes that were doing nothing**
+
+- `noinline` on `ff_eddy_median` and on `ff_report_close`, and the whole
+  of `__attribute__((noipa))` on `TIM_InitTimeBase`. Each was removed and
+  rebuilt at 0 bytes. Together with the `no_reorder` round earlier, the
+  pattern is now clear enough to state as a rule: **an attribute that was
+  added during shaping stays load-bearing only until the code around it
+  changes, and nothing re-tests it.** Re-measure the whole set after any
+  round that moves code.
+
+**Things that had drifted**
+
+- `endstop_event` had lost its `static` at some point. Restored, 0 bytes.
+- `sched_report_shutdown()` repeated `ff_report_close()`'s body verbatim
+  instead of calling it. It calls it now: with `noinline` gone GCC inlines
+  the call and emits the same instructions, so the duplication was only in
+  the source.
+- `ff_report_close`'s prototype sat at the top of `sched.c`; it is in
+  `ff_flashforge.h` with the module's other entry points.
+- `ff_trigger_threshold`'s definition had been dropped between the comment
+  `// Allocate an area of memory` and `alloc_chunk()`, orphaning the
+  comment. It is at the top of `basecmd.c` now.
+- `command.h` included `ff_flashforge.h` from the middle of the file,
+  below several macro definitions. Moved into the include block.
+- `hard_pwm.c`'s two stubs had their opening brace on the declaration
+  line, alone in this tree.
 
 **Things that should not have been in the tree at all**
 

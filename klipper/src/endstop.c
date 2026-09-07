@@ -25,7 +25,7 @@ enum { ESF_PIN_HIGH=1<<0, ESF_HOMING=1<<1 };
 static uint_fast8_t endstop_oversample_event(struct timer *t);
 
 // Timer callback for an end stop
-uint_fast8_t
+static uint_fast8_t
 endstop_event(struct timer *t)
 {
     struct endstop *e = container_of(t, struct endstop, time);
@@ -123,15 +123,12 @@ command_endstop_query_state(uint32_t *args)
 }
 DECL_COMMAND(command_endstop_query_state, "endstop_query_state oid=%c");
 
-// FlashForge addition: re-arm an endstop after a homing attempt.  The
-// trigger counter is reloaded from the sample count, the trsync is dropped
-// and the endstop is taken out of homing.
+// Re-arm an endstop after a homing attempt: reload the trigger counter from
+// the sample count, drop the trsync and take the endstop out of homing.
 //
-// NOTE: this calls ctr_lookup_encoder() directly instead of going through
-// the sendf() macro, which skips the DECL_CTR marker, so
-// "endstop_recover_state oid=%c ok=%c" is never registered as a response
-// and the lookup returns NULL at run time.  Left as it stands: the data
-// dictionary the host parses depends on it.
+// BUG: the reply goes out through ctr_lookup_encoder() rather than sendf(),
+// so no DECL_CTR marker is emitted for it, "endstop_recover_state oid=%c
+// ok=%c" never reaches the data dictionary, and the lookup returns NULL.
 void
 command_endstop_recover_state(uint32_t *args)
 {

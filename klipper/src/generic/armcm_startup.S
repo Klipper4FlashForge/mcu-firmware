@@ -19,11 +19,13 @@
     .global ResetHandler
     .type ResetHandler, %function
 ResetHandler:
-        ldr     r0, .Lstartup_pool
+        ldr     r0, .Lstack_end
         mov     sp, r0
-        ldr     r0, .Lstartup_pool+4
-        ldr     r1, .Lstartup_pool+8
-        ldr     r2, .Lstartup_pool+12
+
+        // Copy .data from its load address in flash to RAM.
+        ldr     r0, .Ldata_start
+        ldr     r1, .Ldata_end
+        ldr     r2, .Ldata_flash
         movs    r3, #0
         b       2f
 1:      ldr     r4, [r2, r3]
@@ -32,24 +34,32 @@ ResetHandler:
 2:      adds    r4, r0, r3
         cmp     r4, r1
         bcc     1b
-        ldr     r2, .Lstartup_pool+16
-        ldr     r4, .Lstartup_pool+20
+
+        // Zero .bss.
+        ldr     r2, .Lbss_start
+        ldr     r4, .Lbss_end
         movs    r3, #0
         b       4f
 3:      str     r3, [r2, #0]
         adds    r2, r2, #4
 4:      cmp     r2, r4
         bcc     3b
+
         bl      SystemInit
         bl      __libc_init_array
         bl      armcm_main
 5:      b       5b
-.Lstartup_pool:
+.Lstack_end:
         .word   _stack_end
+.Ldata_start:
         .word   _data_start
+.Ldata_end:
         .word   _data_end
+.Ldata_flash:
         .word   _data_flash
+.Lbss_start:
         .word   _bss_start
+.Lbss_end:
         .word   _bss_end
     .size ResetHandler, . - ResetHandler
 

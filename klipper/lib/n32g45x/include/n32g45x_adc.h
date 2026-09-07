@@ -277,6 +277,7 @@ typedef struct
 #define CTRL2_TSVREFE_SET ((uint32_t)0x00800000)
 #define CTRL2_TSVREFE_RESET ((uint32_t)0xFF7FFFFF)
 #define VREF1P2_CTRL (*(uint32_t *)(0x40001800 + 0x20))
+#define VREF1P2_CTRL_ENVREF1P2 ((uint32_t)0x00000400)
 /*******************  Bit definition for ADC_CTRL2 register
  * ********************/
 #define ADC_CTRL2_ON ((uint32_t)0x00000001)    /*!< A/D Converter ON / OFF */

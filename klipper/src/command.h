@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h> // uint8_t
 #include "ctr.h" // DECL_CTR
+#include "ff_flashforge.h" // ff_shutdown_code
 
 // Declare a function to run when the specified command is received
 #define DECL_COMMAND_FLAGS(FUNC, FLAGS, MSG)                    \
@@ -43,7 +44,6 @@
 // FlashForge: a shutdown also latches a numeric error code, which the host
 // reads back to name the fault.  The codes run in source order within each
 // file.
-#include "ff_flashforge.h" // ff_shutdown_code
 #define shutdown_ec(code, msg) do {             \
         ff_shutdown_code = (code);              \
         shutdown(msg);                          \

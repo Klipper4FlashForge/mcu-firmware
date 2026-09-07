@@ -34,9 +34,6 @@
 // event every ARR+1 = 501 edges.
 #define FF_EDDY_GATE_ARR 500
 
-// One sample is consumed per polling timer tick.
-#define FF_EDDY_SAMPLE_US 500
-
 // Ring buffer for the noise statistics.  Odd, so the median is an
 // element rather than an average.
 #define FF_EDDY_NSAMP 11
@@ -139,7 +136,7 @@ ff_eddy_now_ms(void)
 }
 
 // Copy the ring, sort the copy, return the middle element.
-static uint32_t noinline
+static uint32_t
 ff_eddy_median(void)
 {
     uint32_t tmp[FF_EDDY_NSAMP];

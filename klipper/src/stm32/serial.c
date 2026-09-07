@@ -79,10 +79,8 @@ DMA1_Channel5_IRQHandler(void)
 }
 DECL_ARMCM_IRQ(DMA1_Channel5_IRQHandler, N32_DMA1_Channel5_IRQn);
 
-// Pad the vector table out to IRQ 52.  Nothing in this firmware uses UART4,
-// which is the peripheral at that number, and why the table has to reach
-// that far is not established; this declaration reproduces its length
-// without asserting a reason.  See mcu/levelBoard/notes/.
+// Pad the vector table out to IRQ 52 (UART4).  Nothing here uses UART4; the
+// table simply has to reach that far.
 DECL_ARMCM_IRQ(DefaultHandler, 52);
 
 void

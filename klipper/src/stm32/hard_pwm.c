@@ -21,10 +21,12 @@ DECL_CTR("_DECL_STATIC_STR PWM already programmed at different speed");
 DECL_CTR("_DECL_STATIC_STR Invalid PWM channel");
 
 struct gpio_pwm
-gpio_pwm_setup(uint8_t pin, uint32_t cycle_time, uint8_t val){
+gpio_pwm_setup(uint8_t pin, uint32_t cycle_time, uint8_t val)
+{
     return (struct gpio_pwm) { };
 }
 
 void
-gpio_pwm_write(struct gpio_pwm g, uint32_t val) {
+gpio_pwm_write(struct gpio_pwm g, uint32_t val)
+{
 }

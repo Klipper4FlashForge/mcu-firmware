@@ -39,7 +39,7 @@ gpio_adc_setup(uint32_t pin)
     udelay(10);
     if (pin == ADC_TEMPERATURE_PIN) {
         NS_ADC1->CTRL2 |= CTRL2_TSVREFE_SET;
-        VREF1P2_CTRL |= (1<<10);
+        VREF1P2_CTRL |= VREF1P2_CTRL_ENVREF1P2;
     }
     return (struct gpio_adc){ .adc = 0, .chan = chan };
 }

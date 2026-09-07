@@ -16,8 +16,6 @@
 #include "stepper.h" // stepper_event
 #include "ff_flashforge.h" // ff_eddy state
 
-void noinline ff_report_close(void);
-
 uint32_t ff_close_num, ff_temp_waketime;
 static uint32_t task_start;
 
@@ -82,7 +80,7 @@ ff_eddy_timer_event(struct timer *t)
         ff_eddy_sample_ref = ff_eddy_baseline;
         ff_eddy_dbg_baseline = ff_eddy_baseline;
     }
-    t->waketime += timer_from_us(500);
+    t->waketime += timer_from_us(FF_EDDY_SAMPLE_US);
     return SF_RESCHEDULE;
 }
 
@@ -280,7 +278,7 @@ sched_is_shutdown(void)
     return !!SchedStatus.shutdown_status;
 }
 
-void noinline
+void
 ff_report_close(void)
 {
     command_sendf(ctr_lookup_encoder(
@@ -292,9 +290,7 @@ ff_report_close(void)
 void
 sched_report_shutdown(void)
 {
-    command_sendf(ctr_lookup_encoder(
-                      "Levelboard close=%hu Close_num=%hu Temp_waketime=%hu")
-                  , ff_timer_close, ff_close_num, ff_temp_waketime);
+    ff_report_close();
     command_sendf(ctr_lookup_encoder("is_shutdown static_string_id=%hu")
                   , SchedStatus.shutdown_reason);
 }
@@ -314,7 +310,7 @@ sched_shutdown(uint_fast8_t reason)
 static uint_fast8_t
 sentinel_event(struct timer *t)
 {
-        sched_shutdown(ctr_lookup_static_string("sentinel timer called"));
+    sched_shutdown(ctr_lookup_static_string("sentinel timer called"));
 }
 
 static struct timer sentinel_timer = {
@@ -377,7 +373,7 @@ void
 ff_eddy_timer_init(void)
 {
     ff_eddy_timer.func = ff_eddy_timer_event;
-    ff_eddy_timer.waketime = timer_read_time() + timer_from_us(500);
+    ff_eddy_timer.waketime = timer_read_time() + timer_from_us(FF_EDDY_SAMPLE_US);
     ff_eddy_timer.next = NULL;
     sched_add_timer(&ff_eddy_timer, FF_TIMER_EDDY_POLL);
 }
