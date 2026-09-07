@@ -28,7 +28,7 @@ the tree indefensible as "FlashForge's source".
 | A5 | `lib/n32g45x/n32g45x_dma.c` `DMA_Init` | one identical-armed conditional | open |
 | A6 | `src/ff_eddy.c` ×2 | `value - 1 > 0xfffe` as a zero/overflow reject — not how a person writes that constant | **fixed** — `ff_eddy_value_bad()`, 0 bytes |
 | A7 | `src/stm32/gpio.c` | `extern volatile uint8_t ff_eddy_pin_state_v __asm__("ff_eddy_pin_state")` — an asm-label alias to get a second, volatile view of a variable already declared in a header | **fixed** — unnecessary once the flag is a `bool`, 0 bytes |
-| A9 | `src/ff_eddy.c` `ff_eddy_home_reset` | the entire function is a `naked` body of hand-written Thumb assembly standing in for six C assignments | open; plain C exhaustively ruled out, see `compiler-shaping.md` |
+| A9 | `src/ff_eddy.c` `ff_eddy_home_reset` | the entire function was a `naked` body of hand-written Thumb assembly standing in for six C assignments | **fixed** — six plain C assignments, 0 bytes; one `*(uint8_t *)&` cast remains |
 | A10 | `src/ff_eddy.c` | `__section(".text.eddy_median")` on `ff_eddy_median`, a magic section name that exists to place the function | open |
 | A11 | `src/stm32/stm32f1.c` ×2, `lib/n32g45x/n32g45x_tim.c` ×1 | `__builtin_expect_with_probability(cond, 1, 0.6)` — a GCC-specific builtin, with a hand-tuned probability, used to steer block layout. No firmware author reaches for this | open |
 | A8 | `src/stm32/stm32f1.c` `armcm_main` | was `asm volatile("movs r3, #0\n msr primask, r3")`, an undeclared-clobber hand assembly of a CMSIS intrinsic | **fixed** — `__set_PRIMASK(0)`, 0 bytes |
@@ -40,12 +40,16 @@ the four read as sanity checks (`value < FF_EDDY_VALUE_MIN`,
 equalities — all at 0 bytes. The telemetry hypothesis that `PLAN.md`
 led with is now falsified; see `notes/compiler-shaping.md`.
 
-Ruled out for A9: all 720 orderings of the six plain-C assignments were
-built; none reaches 0, the best being 16 differing bytes. Stock needs six
-address literals but holds only four registers, reloading r2 and r4
-mid-function, so it spends one callee-saved register where plain C spends
-two and comes out 18 instructions against 17. The missing lever is
-register pressure, not statement order.
+A9 is closed, and the earlier "ruled out" verdict here was wrong. Two
+levers had never been varied together: the *type* of
+`ff_eddy_hard_trigger` and the *volatility of the one store* in this
+function. With `ff_eddy_hard_trigger` a `bool` rather than a `uint8_t`,
+and `ff_eddy_trig_count` cleared through a non-volatile reference, the
+six assignments in their natural order compile to stock's seventeen
+instructions and its literal-pool order exactly. The function is now
+plain C; the residue is one cast, and it is marked in the source. See
+`compiler-shaping.md` for the mechanism and for what the exhaustive
+search had actually covered.
 
 Ruled out for A11: the builtins are load-bearing. Plain `if (pos & 8)`
 costs 47 bytes, `likely()` 42, a plain `pullup < 1` 42, and a plain

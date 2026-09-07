@@ -332,12 +332,10 @@ function; it is ours, not FlashForge's.
 
 ## src/ff_eddy.c — `ff_eddy_home_reset`
 
-GCC schedules the equivalent C — the six stores in source order — with
-the `pin_state` store fifth and one extra callee-saved register (r5).
-Plain C gives 18 instructions against stock's 17, and 22–36 differing
-image bytes across the orderings tried. Making `ff_eddy_trig_acc` and
-`ff_eddy_untrig_count` volatile pins the store order but costs 10,000+
-bytes elsewhere. Still open; the function is hand-written assembly.
+Six plain C stores, and the two things that make them come out as
+stock's seventeen instructions are `ff_eddy_hard_trigger`'s type (`bool`,
+not `uint8_t`) and the non-volatile reference the `ff_eddy_trig_count`
+store goes through. The long form is at the end of this file.
 
 ## src/ff_eddy.c — `ff_eddy_isqrt`
 
@@ -514,62 +512,81 @@ statics of `sched.c`, `tmcuart_wake` of `tmcuart.c`, `trsync_wake` of
 `trsync.c`, and they occupy non-adjacent slots. A single object cannot
 appear twice on a link line. That list is ours.
 
-## src/ff_eddy.c — `ff_eddy_home_reset`: why plain C cannot reach it
+## src/ff_eddy.c — `ff_eddy_home_reset`: how plain C reaches it
 
-An exhaustive search settles this. All 720 statement orders; 720 orders
-x 5 barrier positions; 720 orders x 64 per-store volatility masks
-(46,080 builds); 15 volatile-declaration subsets x 720 orders; and a
-26,779-iteration permuter run. **Nothing reaches 0.** The best plain-C
-body differs by 16 image bytes, and the permuter's own best scoring
-candidate is worse (17) — its alignment-tolerant metric is misleading on
-a fixed-size function.
+Solved.  The body is six assignments in their natural order:
 
-The lever is `-fsched-pressure`, on by default for ARM. In sched1 the
-GENERAL_REGS budget is 6 (13 class registers less 7 call-saved), and LR
-takes one from function entry, so the block starts at pressure 1.
-`setup_insn_reg_pressure_info` prices a ready insn by
-`INSN_MAX_REG_PRESSURE` — the maximum pressure along the original RTL
-chain from the last-scheduled insn up to it. With six constant stores
-the chain between the fourth and fifth address load holds only a store,
-which is pressure -1, so the fifth load is priced at 0 and hoisted;
-pressure reaches 7 and the allocator takes both r4 and r5. Stock hoists
-only four and spends one callee-saved register.
+```c
+ff_eddy_trig_acc = 0;
+*(uint8_t *)&ff_eddy_trig_count = 0;
+ff_eddy_untrig_count = 0;
+ff_eddy_pin_state = true;
+ff_eddy_hard_trigger = false;
+ff_eddy_peel = 0;
+```
 
-The fifth load is priced at 20, and hoisting stops at four, only when a
-register-defining insn sits between the fourth and fifth address load in
-the original chain. In a body of six constant stores the only candidate
-is the materialisation of a constant not yet seen, and the only non-zero
-constant is the `1` for `ff_eddy_pin_state`. So four-load hoisting
-happens exactly when `ff_eddy_pin_state = true;` is the **fourth**
-statement — which is what all eight four-hoisting orders out of the 720
-have in common.
+with `ff_eddy_hard_trigger` declared `static volatile bool` rather than
+`static volatile uint8_t`.  Seventeen instructions, stock's register
+colouring, stock's literal-pool order, whole image at 0 differing bytes.
 
-But stock's emitted volatile order is `pin_state, trig_count,
-hard_trigger, peel`, so `pin_state` must be the **first** volatile store
-in the source, and only two non-volatile stores exist to precede it.
-Three are needed. That contradiction is not resolvable by reordering, by
-per-site volatility, or by a barrier, and it is why the function is
-still hand-written assembly.
+Two constraints have to hold at once, and each rules out the obvious way
+of satisfying the other:
 
-Making `ff_eddy_trig_count` non-volatile does let `pin_state` sit
-fourth, and then the head of the function comes out exactly right — but
-it costs 10,371 bytes elsewhere on its own, and the tail still diverges:
-stock stores `peel` last, after `ldr.w r4,[sp],#4`, with `peel`'s
-address in the first reload, and every reachable candidate loads the two
-late addresses the other way round.
+* **`ff_eddy_pin_state = true` must be the fourth statement.**  In sched1
+  the GENERAL_REGS budget is 6 and LR takes one, so a fifth hoisted
+  address load pushes pressure to 7 and the allocator takes r5 as well as
+  r4.  Hoisting stops at four only when a register-defining insn sits
+  between the fourth and fifth address load in the original chain, and in
+  a body of constant stores the only candidate is the materialisation of
+  the `1`.  Hence `pin_state` fourth — and hence the three statements
+  before it must be stores GCC is free to sink below it, which means not
+  volatile.  `ff_eddy_trig_acc` and `ff_eddy_untrig_count` are already
+  plain; `ff_eddy_trig_count` is not, which is why its store here goes
+  through a non-volatile lvalue.  Declaring the variable itself plain also
+  satisfies this function but costs 10,371 bytes in
+  `ff_eddy_check_trigger` and `ff_eddy_rebaseline`; the cast is local and
+  free.  Exactly three other sites need that volatility — the store in
+  `ff_eddy_rebaseline` and the *else* arms of two of the
+  `ff_eddy_check_trigger` placeholders — which is itself a hint about
+  what those placeholders stand in for.
+* **`ff_eddy_peel = 0` must be emitted last, after `ldr.w r4,[sp],#4`.**
+  That needs its store to sink past `ff_eddy_hard_trigger`'s, and with
+  `hard_trigger` a `uint8_t` it cannot: sched2's RTL alias oracle prices a
+  character-typed MEM in alias set 0, which conflicts with everything, so
+  the two stores stay in program order.  As a `bool`, `hard_trigger` gets
+  its own alias set, `peel`'s store sinks, `hard_trigger` takes r4 and
+  `peel` takes r2 — which is what puts one store after the epilogue reload
+  and gives the literal pool its `…, peel, hard_trigger` tail.
 
-Two live hypotheses, both of which tie this to the open placeholder
-question in `ff_eddy_check_trigger`:
+Why the earlier verdict said this was impossible.  Every sweep had held
+the *declared types* fixed: 720 orders x 64 volatility masks, and
+720 x 15 declaration subsets, all vary who is `volatile`, never who is a
+character type, so the second constraint above was unreachable in the
+whole search space.  Re-running that same grid across the two flag types
+(`pin_state`, `hard_trigger` in {`bool`, `uint8_t`}) — 184,320 builds —
+puts three configurations at 0, all of them the natural statement order
+with `hard_trigger` a `bool`.
 
-1. `ff_eddy_trig_count` is not volatile in stock, and the volatile here
-   is standing in for whatever really shapes `ff_eddy_check_trigger`.
-   Necessary but demonstrably not sufficient.
-2. `ff_eddy_home_reset` is not the whole function in stock's source —
-   something adjacent supplied the register.
+Scoring hid it a second time.  The winning configuration needs
+`trig_count` plain, which regresses `ff_eddy_check_trigger` by 4 bytes and
+shifts every function after it, so the *whole-image* score of the exact
+answer is 10,371 — indistinguishable from noise.  Score the one function
+against its own instruction stream, then pay for the rest separately.
 
-Do not retry: `perm_reorder_stmts` and `perm_temp_for_expr` only
-regenerate the "pin_state fourth" family, which is now enumerated
-exhaustively; zero-code extras (`__builtin_prefetch`, `(void)&x`, a
-store to a write-only static) all vanish before RTL; pointer locals are
-folded by forwprop; an identical-armed `if/else` is not cross-jumped
-here and costs 20+ instructions.
+The general lesson, which applies to every remaining open function: an
+exhaustive search is only exhaustive over the axes it varies, and a
+whole-image byte count is the wrong metric for a candidate that fixes one
+function and breaks another.
+
+
+## src/ff_eddy.c — `ff_eddy_check_trigger`: the debounce counters
+
+Asked and settled from the bytes: the arms really are
+`ff_eddy_untrig_count = 0; if (++ff_eddy_trig_count < 4)`, not
+`= 1` with a plain compare. Stock's `0x08007D0C`/`0x08007D0E` are
+`adds r3,#1 / uxtb r3,r3`, the `cmp` at `0x08007D12` tests that
+incremented value, and `0x08007D16` stores it back; the constant put in
+the opposing counter at `0x08007D10` is `movs r1,#0`. The mirrored arm at
+`0x08007D44`-`0x08007D4E` is the same. All four reset sites in the
+function store zero. The `= 1` reading would also pin the counter at 1
+for ever, so it is not just a different spelling.

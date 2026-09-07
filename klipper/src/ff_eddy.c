@@ -100,7 +100,7 @@ static volatile uint32_t ff_eddy_last_dev;
 // debug probe; nothing in the firmware reads it back.
 uint32_t ff_eddy_dbg_baseline;
 static uint8_t ff_eddy_have_filter;
-static volatile uint8_t ff_eddy_hard_trigger;
+static volatile bool ff_eddy_hard_trigger;
 static volatile uint32_t ff_eddy_mad;
 uint32_t ff_eddy_baseline;
 static int32_t ff_eddy_trig_acc;
@@ -161,31 +161,19 @@ ff_eddy_median(void)
 // Drop the detector back to the untriggered state before a homing move
 // starts.  Called from command_endstop_home and endstop_recover_state.
 //
-// NOT FLASHFORGE'S SOURCE.  This body is hand-written assembly standing
-// in for six C assignments, because the compiler schedules the C form
-// differently.  See mcu/levelBoard/notes/realism-audit.md, entry A9.
-void __attribute__((naked, used))
+// The cast is ours, not necessarily FlashForge's: clearing the trigger
+// counter through a non-volatile reference is what reproduces stock's
+// schedule for these six stores.  See mcu/levelBoard/notes/realism-audit.md,
+// entry A9.
+void
 ff_eddy_home_reset(void)
 {
-    __asm__ volatile(
-        "push {r4}\n"
-        "ldr r2, =ff_eddy_pin_state\n"
-        "ldr r4, =ff_eddy_trig_acc\n"
-        "ldr r0, =ff_eddy_trig_count\n"
-        "ldr r1, =ff_eddy_untrig_count\n"
-        "movs r3, #0\n"
-        "mov.w ip, #1\n"
-        "strb.w ip, [r2]\n"
-        "str r3, [r4]\n"
-        "ldr r2, =ff_eddy_peel\n"
-        "ldr r4, =ff_eddy_hard_trigger\n"
-        "strb r3, [r0]\n"
-        "strb r3, [r1]\n"
-        "strb r3, [r4]\n"
-        "ldr.w r4, [sp], #4\n"
-        "str r3, [r2]\n"
-        "bx lr\n"
-    );
+    ff_eddy_trig_acc = 0;
+    *(uint8_t *)&ff_eddy_trig_count = 0;
+    ff_eddy_untrig_count = 0;
+    ff_eddy_pin_state = true;
+    ff_eddy_hard_trigger = false;
+    ff_eddy_peel = 0;
 }
 
 // Integer square root, Newton's method.
@@ -338,7 +326,7 @@ ff_eddy_update(void)
             // the endstop is forced to trigger.
             store = ff_eddy_sample;
             if (++ff_eddy_outrange_count >= FF_EDDY_HARD_COUNT) {
-                ff_eddy_hard_trigger = 1;
+                ff_eddy_hard_trigger = true;
                 ff_eddy_outrange_count = 0;
             }
         } else {
@@ -499,7 +487,7 @@ ff_eddy_rebaseline(void)
     ff_eddy_untrig_count = 0;
     ff_eddy_trig_count = 0;
     ff_eddy_pin_state = true;
-    ff_eddy_hard_trigger = 0;
+    ff_eddy_hard_trigger = false;
     ff_eddy_peel = 0;
     ff_eddy_calibrated = 1;
 }
@@ -527,10 +515,10 @@ ff_eddy_check_trigger(void)
 {
     irq_disable();
     uint32_t value = ff_eddy_value;
-    uint8_t hard = ff_eddy_hard_trigger;
+    bool hard = ff_eddy_hard_trigger;
     bool state = ff_eddy_pin_state;
     if (hard) {
-        ff_eddy_hard_trigger = 0;
+        ff_eddy_hard_trigger = false;
         irq_enable();
         if (ff_eddy_value_bad(value))
             return;
