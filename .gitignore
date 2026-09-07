@@ -1,0 +1,59 @@
+# ---------------------------------------------------------------------
+# Build scratch.  Everything under work/ is reproduced by build.sh and
+# tools/permuter/setup.sh: the pinned toolchain, classic zlib, the build
+# copy of klipper/, decomp-permuter, its per-function target directories
+# and the rsync experiment trees.  None of it belongs in git.
+work/
+
+# ---------------------------------------------------------------------
+# Klipper build output, in case anyone builds klipper/ in place rather
+# than through build.sh (which copies it into work/ first).
+klipper/out/
+klipper/.config
+klipper/.config.old
+klipper/**/*.o
+klipper/**/*.d
+
+# ---------------------------------------------------------------------
+# Recovery scratch that tends to accumulate next to the thing being
+# measured: disassembly dumps, GCC -fdump-* trees, objdump listings,
+# Ghidra exports and headless project directories, permuter candidates.
+*.dump
+*.objdump
+*.dis
+*.lst
+*.map
+*.expand
+*.ira
+*.reload
+*.sched[12]
+*.gcda
+*.gcno
+ghidra_*/
+*.gpr
+*.rep/
+*.gzf
+
+# ---------------------------------------------------------------------
+# Failed and interrupted edits.
+*.orig
+*.rej
+*.bak
+*~
+.*.swp
+.build.lock
+
+# ---------------------------------------------------------------------
+# Python and editors.
+__pycache__/
+*.pyc
+.venv/
+.idea/
+.vscode/
+.DS_Store
+
+# ---------------------------------------------------------------------
+# The stock images are the whole point of this repository: never let a
+# broad binary rule swallow them.
+!mcu/*/stock/*.bin
+!mcu/*/stock/*.json

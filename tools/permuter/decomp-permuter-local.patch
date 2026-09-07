@@ -1,0 +1,33 @@
+diff --git a/src/ast_util.py b/src/ast_util.py
+index 2431205..d0bb9e5 100644
+--- a/src/ast_util.py
++++ b/src/ast_util.py
+@@ -109,11 +109,10 @@ def extract_fn(ast: ca.FileAST, fn_name: str) -> Tuple[ca.FuncDef, int]:
+         if isinstance(node, ca.FuncDef):
+             if node.decl.name == fn_name:
+                 ret.append((node, i))
+-            elif "inline" not in node.decl.funcspec:
+-                node = node.decl
+-                ast.ext[i] = node
+-        if isinstance(node, ca.Decl) and isinstance(node.type, ca.FuncDecl):
+-            node.storage = [st for st in node.storage if st != "static"]
++            # Local change: keep every other function body and its storage
++            # class. GCC -O2 inlines statics and globals into the target and
++            # deletes stores to write-only statics, so the candidate must
++            # see the same translation unit the real build sees.
+     if len(ret) == 0:
+         raise CandidateConstructionFailure(f"Function {fn_name} not found in base.c.")
+     if len(ret) > 1:
+diff --git a/src/objdump.py b/src/objdump.py
+index 95c0f31..850b957 100644
+--- a/src/objdump.py
++++ b/src/objdump.py
+@@ -406,7 +406,7 @@ def process_ppc_reloc(reloc_row: str, prev: str, repl: str) -> str:
+ 
+ def process_arm32_reloc(reloc_row: str, prev: str, repl: str) -> str:
+     assert any(
+-        r in reloc_row for r in ["R_ARM_THM_CALL", "R_ARM_CALL", "R_ARM_ABS32"]
++        r in reloc_row for r in ["R_ARM_THM_CALL", "R_ARM_CALL", "R_ARM_ABS32", "R_ARM_THM_JUMP24", "R_ARM_THM_JUMP19"]
+     ), f"unknown relocation type '{reloc_row}' for line '{prev}'"
+ 
+     return repl
