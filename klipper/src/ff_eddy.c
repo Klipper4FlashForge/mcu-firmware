@@ -249,7 +249,7 @@ ff_eddy_counter_init(void)
 
     RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_TIM1);
     TIM_TimeBaseInit(NS_TIM1, 0xffff, 0);
-    TIM_SetEventGeneration(NS_TIM1, 1);
+    TIM_SetEventGeneration(NS_TIM1, NS_TIM_EGR_UG);
     TIM_Cmd(NS_TIM1);
 
     ff_eddy_dma_init();
@@ -552,7 +552,8 @@ ff_eddy_check_trigger(void)
     ff_eddy_last_dev = adiff;
 
     // acc += (adiff*16 - acc) / 4; filtered = acc / 16
-    ff_eddy_trig_acc += (((int32_t)ff_eddy_last_dev << 4) - ff_eddy_trig_acc) >> 2;
+    ff_eddy_trig_acc += ((((int32_t)ff_eddy_last_dev << 4)
+                          - ff_eddy_trig_acc) >> 2);
     int32_t filtered = ff_eddy_trig_acc >> 4;
 
     if (thr <= filtered) {

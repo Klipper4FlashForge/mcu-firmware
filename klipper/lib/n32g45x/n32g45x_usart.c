@@ -34,27 +34,27 @@ USART_Init(USART_Module *USARTx, USART_InitType *USART_InitStruct)
     USART_ConfigBaudRate(USARTx, USART_InitStruct->BaudRate);
 
     uint32_t tmpreg = USARTx->CTRL1;
-    tmpreg &= ~((uint16_t)0x1000);
+    tmpreg &= ~USART_CTRL1_WL_MASK;
     tmpreg |= USART_InitStruct->WordLength;
     USARTx->CTRL1 = tmpreg;
 
     tmpreg = USARTx->CTRL2;
-    tmpreg &= ~((uint16_t)0x3000);
+    tmpreg &= ~USART_CTRL2_STPB_MASK;
     tmpreg |= USART_InitStruct->StopBits;
     USARTx->CTRL2 = tmpreg;
 
     tmpreg = USARTx->CTRL1;
-    tmpreg &= ~((uint16_t)0x0600);
+    tmpreg &= ~USART_CTRL1_PARITY_MASK;
     tmpreg |= USART_InitStruct->Parity;
     USARTx->CTRL1 = tmpreg;
 
     tmpreg = USARTx->CTRL1;
-    tmpreg &= ~((uint16_t)0x000c);
+    tmpreg &= ~USART_CTRL1_MODE_MASK;
     tmpreg |= USART_InitStruct->Mode;
     USARTx->CTRL1 = tmpreg;
 
     tmpreg = USARTx->CTRL3;
-    tmpreg &= ~((uint16_t)0x0300);
+    tmpreg &= ~USART_CTRL3_HFCTRL_MASK;
     tmpreg |= USART_InitStruct->HardwareFlowControl;
     USARTx->CTRL3 = tmpreg;
 }

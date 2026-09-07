@@ -28,7 +28,8 @@ struct pwm_move {
 static uint_fast8_t
 pwm_end_event(struct timer *timer)
 {
-    shutdown_ec(FF_EC_PWM_MISSED_EVENT, "Missed scheduling of next hard pwm event");
+    shutdown_ec(FF_EC_PWM_MISSED_EVENT
+                , "Missed scheduling of next hard pwm event");
 }
 
 static uint_fast8_t
@@ -58,7 +59,8 @@ pwm_event(struct timer *timer)
     uint32_t wake = container_of(nn, struct pwm_move, node)->waketime;
     if (value != p->default_value && p->max_duration
         && timer_is_before(p->timer.waketime + p->max_duration, wake))
-        shutdown_ec(FF_EC_PWM_MAX_DURATION, "Scheduled pwm event will exceed max_duration");
+        shutdown_ec(FF_EC_PWM_MAX_DURATION
+                    , "Scheduled pwm event will exceed max_duration");
     p->timer.waketime = wake;
     return SF_RESCHEDULE;
 }
@@ -97,7 +99,8 @@ command_queue_pwm_out(uint32_t *args)
     sched_del_timer(&p->timer);
     if (p->timer.func == pwm_end_event
         && timer_is_before(p->timer.waketime, m->waketime))
-        shutdown_ec(FF_EC_PWM_QUEUE_MAX_DURATION, "Scheduled pwm event will exceed max_duration");
+        shutdown_ec(FF_EC_PWM_QUEUE_MAX_DURATION
+                    , "Scheduled pwm event will exceed max_duration");
     p->timer.func = pwm_event;
     p->timer.waketime = m->waketime;
     sched_add_timer(&p->timer, FF_TIMER_PWM_QUEUE);

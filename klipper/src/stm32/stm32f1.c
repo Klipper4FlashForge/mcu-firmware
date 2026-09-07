@@ -71,9 +71,7 @@ gpio_peripheral(uint32_t gpio, uint32_t mode, int pullup)
     // the two paths are spelled out separately.  Note the long-standing
     // quirk of this port: what gets shifted into the AF field is the GPIO
     // register value, not the function number.
-    // Alternate functions are used on the high half of a port about as
-    // often as on the low half here.
-    if (__builtin_expect_with_probability(!!(pos & 8), 1, 0.6)) {
+    if (likely(pos & 8)) {
         uint32_t af = r->AFH & ~(0xf << shift);
         af |= (uint32_t)r << shift;
         r->AFH = af;
@@ -95,7 +93,7 @@ gpio_peripheral(uint32_t gpio, uint32_t mode, int pullup)
     r->PUPD = (pullup << shift) | (r->PUPD & mask);
     r->SR &= ~(1 << pos);
     r->DS = (GPIO_DC_8MA << shift) | (r->DS & mask);
-    if (__builtin_expect_with_probability(pullup > 0, 1, 0.8)) {
+    if (likely(pullup > 0)) {
         r->PBSC = 1 << pos;
     } else if (pullup) {
         r->PBSC = 1 << (pos + 16);

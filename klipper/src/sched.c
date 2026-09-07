@@ -323,7 +323,8 @@ void
 sched_clear_shutdown(void)
 {
     if (!SchedStatus.shutdown_status)
-        shutdown_ec(FF_EC_CLEAR_WHEN_NOT_SHUTDOWN, "Shutdown cleared when not shutdown");
+        shutdown_ec(FF_EC_CLEAR_WHEN_NOT_SHUTDOWN
+                    , "Shutdown cleared when not shutdown");
     if (SchedStatus.shutdown_status == 2)
         return;
     SchedStatus.shutdown_status = 0;
@@ -373,7 +374,8 @@ void
 ff_eddy_timer_init(void)
 {
     ff_eddy_timer.func = ff_eddy_timer_event;
-    ff_eddy_timer.waketime = timer_read_time() + timer_from_us(FF_EDDY_SAMPLE_US);
+    ff_eddy_timer.waketime = (timer_read_time()
+                              + timer_from_us(FF_EDDY_SAMPLE_US));
     ff_eddy_timer.next = NULL;
     sched_add_timer(&ff_eddy_timer, FF_TIMER_EDDY_POLL);
 }

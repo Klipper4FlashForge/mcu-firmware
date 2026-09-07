@@ -30,7 +30,7 @@ the tree indefensible as "FlashForge's source".
 | A7 | `src/stm32/gpio.c` | `extern volatile uint8_t ff_eddy_pin_state_v __asm__("ff_eddy_pin_state")` — an asm-label alias to get a second, volatile view of a variable already declared in a header | **fixed** — unnecessary once the flag is a `bool`, 0 bytes |
 | A9 | `src/ff_eddy.c` `ff_eddy_home_reset` | the entire function was a `naked` body of hand-written Thumb assembly standing in for six C assignments | **fixed** — six plain C assignments, 0 bytes; one `*(uint8_t *)&` cast remains |
 | A10 | `src/ff_eddy.c` | `__section(".text.eddy_median")` on `ff_eddy_median`, a magic section name that exists to place the function | **fixed** — inert, deleted, 0 bytes |
-| A11 | `src/stm32/stm32f1.c` ×2, `lib/n32g45x/n32g45x_tim.c` ×1 | `__builtin_expect_with_probability(cond, 1, 0.6)` — a GCC-specific builtin, with a hand-tuned probability, used to steer block layout. No firmware author reaches for this | open |
+| A11 | `src/stm32/stm32f1.c` ×2, `lib/n32g45x/n32g45x_tim.c` ×1 | `__builtin_expect_with_probability(cond, 1, 0.6)` — a GCC-specific builtin, with a hand-tuned probability, used to steer block layout. No firmware author reaches for this | **fixed** — all three are `likely()` / `__builtin_expect` now, 0 bytes |
 | A8 | `src/stm32/stm32f1.c` `armcm_main` | was `asm volatile("movs r3, #0\n msr primask, r3")`, an undeclared-clobber hand assembly of a CMSIS intrinsic | **fixed** — `__set_PRIMASK(0)`, 0 bytes |
 | A12 | `lib/n32g45x/n32g45x_tim.c` `TIM_InitTimBaseStruct` | `__attribute__((noipa))` — a GCC-only attribute that switches off interprocedural analysis of one function | open, costs 6 bytes without it |
 
@@ -69,10 +69,37 @@ tips IRA's preference. A source change that adds a *use* of that pointer
 without emitting an instruction is what is wanted, and no legal C
 spelling of one has been found. Also measured and rejected: dropping
 `volatile` from `ff_eddy_mad` (21 bytes with the placeholder in place —
-so unlike `analog_in_value`, this `volatile` is load-bearing).
+so unlike `analog_in_value`, this `volatile` is load-bearing). New this
+round and also rejected: five spellings of the ring-buffer tail that
+uses `ff_eddy_ring_pos` (21, 21, 23, 627, 647), making
+`ff_eddy_ring_pos` itself `volatile` (11,209), and reading the noise
+estimate back out of `ff_eddy_mad` instead of the local (11,207).
+Separately, A9's one remaining cast is confirmed load-bearing: writing
+`ff_eddy_trig_count = 0` plainly costs 19 bytes, and making the variable
+non-volatile so no cast is needed costs 10,371.
 
 A3's four placeholders cost 14, 3, 7 and 10,366 bytes if simply
-deleted, and 14 for the first two together. The first one is the
+deleted, and 14 for the first two together. Re-measured after this
+round's code motion: unchanged, and so are A2 (4) and A4 (21). The
+attribute-rot rule below cuts both ways — this time nothing had come
+loose.
+
+The second placeholder is now pinned down exactly. Its three bytes are
+one register pair swapped in the hard-trigger branch: stock computes
+`subs r3, r5, #1` against `movw r2, #0xfffe`, we emit `subs r2` against
+`movw r3`. The *second* copy of the same `ff_eddy_value_bad()` test,
+twenty bytes further on, agrees with stock. So the placeholder is buying
+r2/r3 in one of two identical tests. Tried and rejected at 3–14 bytes:
+swapping the two counter clears, chaining them
+(`a = b = 0`), moving them above the `if (state)` guard, dropping the
+guard, and storing `0` rather than `false` into `ff_eddy_hard_trigger`.
+
+For the third, the "moved declaration" lever was applied properly and
+found nothing: `ff_eddy_peel = diff;` was placed at all five points
+between `int32_t diff` and `int32_t filtered`, and only its current
+position scores 7 — every other lands at 158. Folding `adiff` into the
+filter expression instead of re-reading `ff_eddy_last_dev` costs 2,834,
+which incidentally confirms that the re-read is stock's. The first one is the
 interesting one: without it stock's `state` sits in r4 and ours in r5,
 because in stock `value` is still live past the `if (state)` block. The
 third is only a 3-byte r2/r3 swap in the `ff_eddy_value_bad` test.
@@ -110,20 +137,42 @@ modref information about the callee, not inlining or cloning, that
 `mov r1, r4` scheduled two instructions early. All 24 orders of the
 wrapper's four field assignments were tried (best 4); dropping the two
 assignments that `TIM_InitTimBaseStruct` has already made costs 6,203.
+Re-run this round with the attribute removed rather than kept — all 24
+orders again, plus a `volatile` file-static — and every one lands at
+6,336 or worse, which is the whole-image shift from the function losing
+six bytes.
 The natural fix is probably structural — the wrapper is FlashForge's,
 not the SDK's, and in a separate translation unit there would be no
 interprocedural analysis to switch off — but it sits at the end of the
 TIM object's `.text`, so it cannot move without moving its address.
 
-Ruled out for A11: the builtins are load-bearing. Plain `if (pos & 8)`
-costs 47 bytes, `likely()` 42, a plain `pullup < 1` 42, and a plain
-`TIMx == NS_TIM1 || TIMx == NS_TIM8` 6,585. What is free is reshaping
-the code around them: the pull-up tail now reads
-`if (pullup > 0) … else if (pullup) …` instead of a `pullup < 1` test
-with an unreachable inner branch, at 0 bytes. Retried since and also
-rejected: inverting the alternate-function branch so the low half reads
-first (`if (pos < 8)`, 50 bytes) and selecting the AF register through a
-pointer instead of branching (9,026).
+A11 is closed, and it closed the way A5 did — by not trusting the
+earlier measurement. The three probability builtins were measured one at
+a time, each with the other two still in place, and each looked
+load-bearing at 42–47 bytes. They are not independent. `gpio_peripheral`
+has two of them, and once the pull-up tail is `likely(pullup > 0)` the
+alternate-function branch is free to be `likely(pos & 8)` as well: the
+pair together score 0, where either alone scores 42. Nothing about the
+hand-tuned 0.6 and 0.8 was ever needed — a plain "this is the common
+case" is all GCC wanted, and `likely()` is a macro this tree already
+defines and uses everywhere.
+
+The third site, `TIM_InitTimeBase`'s repetition-counter test, came apart
+the same way. `__builtin_expect(TIMx == NS_TIM8, 1)` in place of the
+0.5 probability leaves three bytes, and all three are in a *different*
+statement: the `CapCh1FromCompEn` write, four lines below, was spelled
+inside-out — `if (!s->CapCh1FromCompEn) clear; else set;` where its three
+siblings all read `if (s->CapChNFromCompEn) set; else clear;`. Written
+like its siblings, the file is at 0. So the probability was compensating
+for an inverted branch elsewhere in the same function, and both artifacts
+came out together. (`lib/` does not include `compiler.h`, so this one
+site keeps the bare builtin rather than `likely()`.)
+
+Still ruled out for A11, with the hint present: a plain
+`TIMx == NS_TIM1 || TIMx == NS_TIM8` costs 6,577, a `switch` on the two
+addresses 6,446, expecting the whole disjunction rather than its second
+term 225. And from before: selecting the AF register through a pointer
+instead of branching, 9,026.
 
 Measured and ruled out for A1: all 24 orderings of the four stores (best
 4 bytes), and `struct trsync * volatile ts` (10 bytes, worse).
@@ -344,6 +393,32 @@ had, or now has beside its neighbours. 0 bytes, every one.
 - `armcm_startup.S`: the reset handler addressed its literal pool as
   `.Lstartup_pool+4`, `+8`, `+12` … Each word has its own label now, and
   the two loops have a line of comment each.
+
+**Register fields that were only numbers**
+
+The vendor header names peripheral bits; the drivers were still writing
+the hex. Every mask below is now a define in `lib/n32g45x/include/n32g45x.h`,
+in the style of the ones already there, and 0 bytes.
+
+- `n32g45x_tim.c`: the CR1 field masks (`NS_TIM_CR1_DIR_CMS`,
+  `NS_TIM_CR1_CKD`, the four `NS_TIM_CR1_CAP_CHn_FROM_CMP` and
+  `NS_TIM_CR1_CAP_ETR_CLR_FROM_CMP`), the CR1 enable bit, `EGR = 1` at
+  three sites, and `TIM_ETRClockMode2Config`'s four SMCR fields. The
+  `NS_` prefix is not decoration: CMSIS's `stm32f103xe.h` is in the
+  include path and defines `TIM_CR1_CEN`, `TIM_EGR_UG` and the `SMCR`
+  names itself, which is exactly why this header already spells its
+  peripheral pointers `NS_TIM1`.
+- `n32g45x_dma.c`: the nine CHCFG field masks, and `DMA_DeInit`'s eight
+  per-channel `INTCLR` nibbles, which are now `DMA1_CHn_INT_MASK`.
+- `n32g45x_usart.c`: the five CTRL1/CTRL2/CTRL3 field masks that
+  `USART_Init` clears before writing each field.
+
+**Line length**
+
+Fifteen lines in `src/` were over Klipper's 80 columns, all of them the
+`shutdown_ec()` call sites where an error-code name had been prepended to
+an existing `shutdown()` string. Wrapped with the leading comma this tree
+already uses for continued argument lists.
 
 **More attributes that were doing nothing**
 

@@ -20,56 +20,55 @@ TIM_InitTimeBase(TIM_Module *TIMx, TIM_TimeBaseInitType *s)
     // selectors that particular timer supports.
     if (TIMx != NS_TIM6) {
         uint32_t tmp = TIMx->CR1;
-        tmp &= ~((uint32_t)0x0070);
+        tmp &= ~NS_TIM_CR1_DIR_CMS;
         tmp |= s->CntMode;
         TIMx->CR1 = tmp;
 
         tmp = TIMx->CR1;
-        tmp &= ~((uint32_t)0x0300);
+        tmp &= ~NS_TIM_CR1_CKD;
         TIMx->CR1 = tmp;
         TIMx->CR1 |= s->ClkDiv;
 
         TIMx->ARR = s->Period;
         TIMx->PSC = s->Prescaler;
-        // Only the advanced timers have a repetition counter.  TIM8 is as
-        // likely as TIM1 at the call sites here, so say so rather than let
-        // the compiler assume the equality usually fails.
-        if (TIMx == NS_TIM1
-            || __builtin_expect_with_probability(TIMx == NS_TIM8, 1, 0.5))
+        // Only the advanced timers have a repetition counter.  The hint
+        // keeps TIM8 on the same fast path as TIM1: without it gcc treats
+        // the second comparison as the unlikely one and reorders the tail.
+        if (TIMx == NS_TIM1 || __builtin_expect(TIMx == NS_TIM8, 1))
             TIMx->RCR = s->RepetCnt;
-        TIMx->EGR = 1;
+        TIMx->EGR = NS_TIM_EGR_UG;
 
-        if (!s->CapCh1FromCompEn)
-            TIMx->CR1 &= ~((uint32_t)0x0800);
+        if (s->CapCh1FromCompEn)
+            TIMx->CR1 |= NS_TIM_CR1_CAP_CH1_FROM_CMP;
         else
-            TIMx->CR1 |= 0x0800;
+            TIMx->CR1 &= ~NS_TIM_CR1_CAP_CH1_FROM_CMP;
 
         if (TIMx != NS_TIM1 && TIMx != NS_TIM8 && TIMx != NS_TIM2
             && TIMx != NS_TIM3 && TIMx != NS_TIM4)
             return;
         if (s->CapEtrClrFromCompEn)
-            TIMx->CR1 |= 0x8000;
+            TIMx->CR1 |= NS_TIM_CR1_CAP_ETR_CLR_FROM_CMP;
         else
-            TIMx->CR1 &= ~((uint32_t)0x8000);
+            TIMx->CR1 &= ~NS_TIM_CR1_CAP_ETR_CLR_FROM_CMP;
 
         if (TIMx != NS_TIM2)
             return;
         if (s->CapCh2FromCompEn)
-            TIMx->CR1 |= 0x1000;
+            TIMx->CR1 |= NS_TIM_CR1_CAP_CH2_FROM_CMP;
         else
-            TIMx->CR1 &= ~((uint32_t)0x1000);
+            TIMx->CR1 &= ~NS_TIM_CR1_CAP_CH2_FROM_CMP;
         if (s->CapCh3FromCompEn)
-            TIMx->CR1 |= 0x2000;
+            TIMx->CR1 |= NS_TIM_CR1_CAP_CH3_FROM_CMP;
         else
-            TIMx->CR1 &= ~((uint32_t)0x2000);
+            TIMx->CR1 &= ~NS_TIM_CR1_CAP_CH3_FROM_CMP;
         if (s->CapCh4FromCompEn)
-            TIMx->CR1 |= 0x4000;
+            TIMx->CR1 |= NS_TIM_CR1_CAP_CH4_FROM_CMP;
         else
-            TIMx->CR1 &= ~((uint32_t)0x4000);
+            TIMx->CR1 &= ~NS_TIM_CR1_CAP_CH4_FROM_CMP;
     } else {
         TIMx->ARR = s->Period;
         TIMx->PSC = s->Prescaler;
-        TIMx->EGR = 1;
+        TIMx->EGR = NS_TIM_EGR_UG;
     }
 }
 
@@ -94,7 +93,7 @@ TIM_Cmd(TIM_Module *TIMx)
 {
     // The levelBoard only ever starts a timer, never stops one, so this
     // helper drops the SDK's enable/disable argument.
-    TIMx->CR1 |= 1;
+    TIMx->CR1 |= NS_TIM_CR1_CEN;
 }
 
 void
@@ -103,18 +102,18 @@ TIM_ETRClockMode2Config(TIM_Module *TIMx, uint16_t prescaler,
 {
     uint16_t psc = prescaler;
     uint16_t tmp = TIMx->SMCR;
-    tmp &= (uint16_t)~0x0f00;
+    tmp &= (uint16_t)~NS_TIM_SMCR_ETF;
     tmp |= (uint16_t)(filter << 8);
     TIMx->SMCR = tmp;
-    if (polarity == 0x8000)
-        TIMx->SMCR |= 0x8000;
+    if (polarity == NS_TIM_SMCR_ETP)
+        TIMx->SMCR |= NS_TIM_SMCR_ETP;
     else
-        TIMx->SMCR &= (uint16_t)~0x8000;
+        TIMx->SMCR &= (uint16_t)~NS_TIM_SMCR_ETP;
     tmp = TIMx->SMCR;
-    tmp &= (uint16_t)~0x3000;
+    tmp &= (uint16_t)~NS_TIM_SMCR_ETPS;
     tmp |= psc;
     TIMx->SMCR = tmp;
-    TIMx->SMCR = (uint16_t)(TIMx->SMCR | 0x4000);
+    TIMx->SMCR = (uint16_t)(TIMx->SMCR | NS_TIM_SMCR_ECE);
 }
 
 void

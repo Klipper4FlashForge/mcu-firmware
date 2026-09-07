@@ -59,7 +59,8 @@ digital_load_event(struct timer *timer)
     // Apply next update and remove it from queue
     struct digital_out_s *d = container_of(timer, struct digital_out_s, timer);
     if (move_queue_empty(&d->mq))
-        shutdown_ec(FF_EC_DIGITAL_MISSED_EVENT, "Missed scheduling of next digital out event");
+        shutdown_ec(FF_EC_DIGITAL_MISSED_EVENT
+                    , "Missed scheduling of next digital out event");
     struct move_node *mn = move_queue_pop(&d->mq);
     struct digital_move *m = container_of(mn, struct digital_move, node);
     uint32_t on_duration = m->on_duration;
@@ -86,7 +87,9 @@ digital_load_event(struct timer *timer)
         struct move_node *nn = move_queue_first(&d->mq);
         uint32_t wake = container_of(nn, struct digital_move, node)->waketime;
         if (flags & DF_CHECK_END && timer_is_before(end_time, wake))
-            shutdown_ec(FF_EC_DIGITAL_MAX_DURATION, "Scheduled digital out event will exceed max_duration");
+            shutdown_ec(
+                FF_EC_DIGITAL_MAX_DURATION
+                , "Scheduled digital out event will exceed max_duration");
         end_time = wake;
         flags |= DF_CHECK_END;
     }
@@ -134,7 +137,8 @@ command_set_digital_out_pwm_cycle(uint32_t *args)
     struct digital_out_s *d = oid_lookup(args[0], command_config_digital_out);
     irq_disable();
     if (!move_queue_empty(&d->mq))
-        shutdown_ec(FF_EC_SOFT_PWM_UPDATES_PENDING, "Can not set soft pwm cycle ticks while updates pending");
+        shutdown_ec(FF_EC_SOFT_PWM_UPDATES_PENDING
+                    , "Can not set soft pwm cycle ticks while updates pending");
     d->cycle_time = args[1];
     irq_enable();
 }
@@ -157,7 +161,8 @@ command_queue_digital_out(uint32_t *args)
     }
     uint8_t flags = d->flags;
     if (flags & DF_CHECK_END && timer_is_before(d->end_time, time))
-        shutdown_ec(FF_EC_DIGITAL_QUEUE_MAX_DURATION, "Scheduled digital out event will exceed max_duration");
+        shutdown_ec(FF_EC_DIGITAL_QUEUE_MAX_DURATION
+                    , "Scheduled digital out event will exceed max_duration");
     d->end_time = time;
     d->flags = flags | DF_CHECK_END;
     if (flags & DF_TOGGLING && timer_is_before(d->timer.waketime, time)) {
@@ -180,7 +185,8 @@ command_update_digital_out(uint32_t *args)
     struct digital_out_s *d = oid_lookup(args[0], command_config_digital_out);
     sched_del_timer(&d->timer);
     if (!move_queue_empty(&d->mq))
-        shutdown_ec(FF_EC_DIGITAL_ACTIVE_QUEUE, "update_digital_out not valid with active queue");
+        shutdown_ec(FF_EC_DIGITAL_ACTIVE_QUEUE
+                    , "update_digital_out not valid with active queue");
     uint8_t value = args[1], flags = d->flags, on_flag = value ? DF_ON : 0;
     gpio_out_write(d->pin, on_flag);
     if (!on_flag != !(flags & DF_DEFAULT_ON) && d->max_duration) {

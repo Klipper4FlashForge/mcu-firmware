@@ -59,12 +59,21 @@ matter and is still load-bearing: dropping it lets both inline into
     // than an early return: that is what places its code last, as in stock.
 ```
 
-```
-        // Stock's compiler saw the TIM8 test at even odds.  GCC 10 predicts
-        // a pointer equality as 30 % taken, and that guess alone changes the
-        // block layout; the weight below restores stock's layout.  The
-        // spelling FlashForge used to get there is not known.
-```
+The hand-tuned probability that used to sit on the TIM8 test is gone.
+`__builtin_expect(TIMx == NS_TIM8, 1)` — a plain "this is the common
+case" — leaves three bytes, and none of the three are in that statement:
+they are in the `CapCh1FromCompEn` write four lines below, which had been
+spelled inside-out (`if (!s->CapCh1FromCompEn) clear; else set;`) where
+its three siblings all read `if (s->CapChNFromCompEn) set; else clear;`.
+The probability had been compensating for an inverted branch elsewhere in
+the same function. Written like its siblings, the file is at 0.
+
+The hint itself is still needed: without any, GCC predicts the pointer
+equality as mostly-false, moves the `RCR` write out of line and 6,577
+bytes shift. A `switch` on the two addresses costs 6,446; expecting the
+whole disjunction rather than its second term, 225. `lib/` does not
+include `compiler.h`, so this is the one site in the tree that spells
+the builtin out rather than using `likely()`.
 
 ### TIM_TimeBaseInit and the one `noipa` that is left
 
@@ -82,7 +91,11 @@ even `noinline`; it is gone. Measured and rejected for the remaining
 one: all 24 orders of the wrapper's four assignments (best 4 bytes), and
 dropping the wrapper's redundant `ClkDiv = 0` / `CntMode = 0` — which
 `TIM_InitTimBaseStruct` has already done — at 6,203 bytes, so those two
-redundant stores are stock's.
+redundant stores are stock's. Re-swept with the attribute *removed*
+rather than kept, which is the sweep that had not been run: all 24
+orders again, plus making the file-static `volatile`. Nothing beats
+6,336, which is just the whole-image shift from the function losing its
+six bytes.
 
 ## lib/n32g45x/n32g45x_tim.c — TIM_ETRClockMode2Config
 
@@ -227,10 +240,21 @@ name now. See "why `ff_eddy_pin_state` has to be a `bool`" below.
     // to the pullup tail; these weights reproduce stock's block order.
 ```
 
-Retried and rejected since: writing the low half first, `if (pos < 8)`
-with the two blocks swapped, costs 50 bytes, and selecting the AF
-register through a pointer instead of branching costs 9,026. The
-`__builtin_expect_with_probability` weights stand.
+Both `__builtin_expect_with_probability` weights are gone, and the
+reason they had survived three rounds is worth stating plainly: **they
+were measured one at a time.** Each site, tested with the other still in
+place, scored 42 bytes as `likely()` and looked load-bearing. They are
+not independent — they steer the same two out-of-line blocks past each
+other. Change the pull-up tail to `likely(pullup > 0)` first and the
+alternate-function test is then free to be `likely(pos & 8)`; the pair
+together score 0. Nothing about 0.6 and 0.8 was ever needed. The lesson
+is the same one the attribute sweeps keep teaching, in a new place: a
+one-at-a-time sweep cannot see a construct that is only load-bearing
+because of another construct.
+
+Still rejected: writing the low half first, `if (pos < 8)` with the two
+blocks swapped, costs 50 bytes, and selecting the AF register through a
+pointer instead of branching costs 9,026.
 
 Three constants in this function were only constants, and naming them is
 free. `(volatile uint32_t *)0x40021014` is `&RCC->AHBENR`; naming it
@@ -472,7 +496,15 @@ instructions, same order, same size, one register apart. `volatile` on
 `ff_eddy_mad` is load-bearing here too: dropping it costs the same 21
 even though the variable is write-only and a plain global would keep the
 store alive, which is the opposite of what happened with
-`analog_in_value`.
+`analog_in_value`. The obvious way to buy that reference honestly — make
+`ff_eddy_ring_pos` itself `volatile`, so the ring tail reads it for real
+— costs 11,209; reading the noise estimate back out of `ff_eddy_mad`
+instead of the local costs 11,207. Five spellings of the ring tail were
+tried on the theory that the address stays live if the wrap is written
+differently (`== FF_EDDY_NSAMP`, a post-increment subscript, an unhinted
+wrap, the count bumped before the wrap): 21, 21, 23, 627, 647. The
+`unlikely()` on the wrap is load-bearing at 625 bytes, and the one in
+`ff_eddy_isqrt` at 23.
 
 ## src/ff_eddy.c — `ff_eddy_rebaseline`
 
@@ -512,7 +544,18 @@ Also swept and rejected at A and C: both orders of the two counter
 resets, braced and unbraced `if (state)`, dropping the `if (state)`
 guard entirely (2,790 bytes — stock has the guard), and three spellings
 of `ff_eddy_value_bad` (`== 0 || > 0xffff`, `- 1 > 0xfffe`, a `uint16_t`
-round trip; the third costs 2,867).
+round trip; the third costs 2,867). Added since: chaining the two
+counter clears as `a = b = 0` (5), hoisting them above the `if (state)`
+guard (14), and storing `0` rather than `false` into
+`ff_eddy_hard_trigger` (3).
+
+The declaration lever was finally run at B, which is the only one of the
+four with a spare statement near it: `ff_eddy_peel = diff;` placed at
+each of the five points between `int32_t diff` and `int32_t filtered`.
+Only its current position scores 7; the other four score 158 or 159.
+Folding `adiff` into the filter expression rather than re-reading
+`ff_eddy_last_dev` costs 2,834, which is a useful side result — the
+re-read of the volatile is stock's, not ours.
 
 ## src/ff_eddy.c — the telemetry hypothesis is dead
 

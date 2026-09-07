@@ -143,6 +143,12 @@ typedef struct
 #define USART_MODE_TX       ((uint16_t)0x0008)
 #define USART_HFCTRL_NONE   ((uint16_t)0x0000)
 
+#define USART_CTRL1_WL_MASK     ((uint16_t)0x1000)
+#define USART_CTRL1_PARITY_MASK ((uint16_t)0x0600)
+#define USART_CTRL1_MODE_MASK   ((uint16_t)0x000c)
+#define USART_CTRL2_STPB_MASK   ((uint16_t)0x3000)
+#define USART_CTRL3_HFCTRL_MASK ((uint16_t)0x0300)
+
 #define USART_FLAG_TXC      ((uint16_t)0x0040)
 // interrupt id: (control register index << 5) | bit position
 #define USART_INT_RXDNE     ((uint16_t)0x0525)
@@ -208,6 +214,26 @@ typedef struct
 
 // DMA channel request selection: TIM8 update event.
 #define DMA_REMAP_TIM8_UP               ((uint32_t)0x00000032)
+
+#define DMA_CHCFG_CHEN                  ((uint32_t)0x00000001)
+#define DMA_CHCFG_DIR_MASK              ((uint32_t)0x00000010)
+#define DMA_CHCFG_CIRC_MASK             ((uint32_t)0x00000020)
+#define DMA_CHCFG_PERIPH_INC_MASK       ((uint32_t)0x00000040)
+#define DMA_CHCFG_MEM_INC_MASK          ((uint32_t)0x00000080)
+#define DMA_CHCFG_PERIPH_DATA_SIZE_MASK ((uint32_t)0x00000300)
+#define DMA_CHCFG_MEM_DATA_SIZE_MASK    ((uint32_t)0x00000c00)
+#define DMA_CHCFG_PRIORITY_MASK         ((uint32_t)0x00003000)
+#define DMA_CHCFG_M2M_MASK              ((uint32_t)0x00004000)
+
+// Every channel owns one nibble of DMA1->INTCLR.
+#define DMA1_CH1_INT_MASK               ((uint32_t)0x0000000f)
+#define DMA1_CH2_INT_MASK               ((uint32_t)0x000000f0)
+#define DMA1_CH3_INT_MASK               ((uint32_t)0x00000f00)
+#define DMA1_CH4_INT_MASK               ((uint32_t)0x0000f000)
+#define DMA1_CH5_INT_MASK               ((uint32_t)0x000f0000)
+#define DMA1_CH6_INT_MASK               ((uint32_t)0x00f00000)
+#define DMA1_CH7_INT_MASK               ((uint32_t)0x0f000000)
+#define DMA1_CH8_INT_MASK               ((uint32_t)0xf0000000)
 
 #define DMA_INT_TXC     ((uint32_t)0x00000002)
 
@@ -305,6 +331,22 @@ void TIM_SetEventGeneration(TIM_Module *TIMx, uint16_t value);
 void TIM_ETRClockMode2Config(TIM_Module *TIMx, uint16_t prescaler,
                              uint16_t polarity, uint16_t filter);
 #define TIM_DMA_UPDATE  ((uint16_t)0x0100)
+
+#define NS_TIM_CR1_CEN                  ((uint32_t)0x0001)
+#define NS_TIM_CR1_DIR_CMS              ((uint32_t)0x0070)
+#define NS_TIM_CR1_CKD                  ((uint32_t)0x0300)
+#define NS_TIM_CR1_CAP_CH1_FROM_CMP     ((uint32_t)0x0800)
+#define NS_TIM_CR1_CAP_CH2_FROM_CMP     ((uint32_t)0x1000)
+#define NS_TIM_CR1_CAP_CH3_FROM_CMP     ((uint32_t)0x2000)
+#define NS_TIM_CR1_CAP_CH4_FROM_CMP     ((uint32_t)0x4000)
+#define NS_TIM_CR1_CAP_ETR_CLR_FROM_CMP ((uint32_t)0x8000)
+
+#define NS_TIM_EGR_UG                   ((uint16_t)0x0001)
+
+#define NS_TIM_SMCR_ETPS                ((uint16_t)0x3000)
+#define NS_TIM_SMCR_ETF                 ((uint16_t)0x0f00)
+#define NS_TIM_SMCR_ECE                 ((uint16_t)0x4000)
+#define NS_TIM_SMCR_ETP                 ((uint16_t)0x8000)
 
 void TIM_DMACmd(TIM_Module *TIMx, uint16_t request);
 void TIM_Cmd(TIM_Module *TIMx);

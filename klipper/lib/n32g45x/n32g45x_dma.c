@@ -8,27 +8,27 @@
 void
 DMA_DeInit(DMA_ChannelType *channel)
 {
-    channel->CHCFG &= ~((uint32_t)0x1);
+    channel->CHCFG &= ~DMA_CHCFG_CHEN;
     channel->CHCFG = 0;
     channel->TXNUM = 0;
     channel->PADDR = 0;
     channel->MADDR = 0;
     if (channel == NS_DMA1_CH1)
-        NS_DMA1->INTCLR |= (uint32_t)0x0000000f;
+        NS_DMA1->INTCLR |= DMA1_CH1_INT_MASK;
     else if (channel == NS_DMA1_CH2)
-        NS_DMA1->INTCLR |= (uint32_t)0x000000f0;
+        NS_DMA1->INTCLR |= DMA1_CH2_INT_MASK;
     else if (channel == NS_DMA1_CH3)
-        NS_DMA1->INTCLR |= (uint32_t)0x00000f00;
+        NS_DMA1->INTCLR |= DMA1_CH3_INT_MASK;
     else if (channel == NS_DMA1_CH4)
-        NS_DMA1->INTCLR |= (uint32_t)0x0000f000;
+        NS_DMA1->INTCLR |= DMA1_CH4_INT_MASK;
     else if (channel == NS_DMA1_CH5)
-        NS_DMA1->INTCLR |= (uint32_t)0x000f0000;
+        NS_DMA1->INTCLR |= DMA1_CH5_INT_MASK;
     else if (channel == NS_DMA1_CH6)
-        NS_DMA1->INTCLR |= (uint32_t)0x00f00000;
+        NS_DMA1->INTCLR |= DMA1_CH6_INT_MASK;
     else if (channel == NS_DMA1_CH7)
-        NS_DMA1->INTCLR |= (uint32_t)0x0f000000;
+        NS_DMA1->INTCLR |= DMA1_CH7_INT_MASK;
     else if (channel == NS_DMA1_CH8)
-        NS_DMA1->INTCLR |= (uint32_t)0xf0000000;
+        NS_DMA1->INTCLR |= DMA1_CH8_INT_MASK;
 }
 
 void
@@ -41,43 +41,43 @@ DMA_Init(DMA_ChannelType *channel, DMA_InitType *DMA_InitParam)
     // channel can be reconfigured field by field without disturbing the
     // rest of the control register.
     int dir = DMA_InitParam->Direction;
-    channel->CHCFG &= ~((uint32_t)0x0010);
+    channel->CHCFG &= ~DMA_CHCFG_DIR_MASK;
     channel->CHCFG |= dir;
     int bufsize = DMA_InitParam->BufSize;
     channel->TXNUM = bufsize;
     int pinc = DMA_InitParam->PeriphInc;
-    channel->CHCFG &= ~((uint32_t)0x0040);
+    channel->CHCFG &= ~DMA_CHCFG_PERIPH_INC_MASK;
     channel->CHCFG |= pinc;
     int minc = DMA_InitParam->DMA_MemoryInc;
-    channel->CHCFG &= ~((uint32_t)0x0080);
+    channel->CHCFG &= ~DMA_CHCFG_MEM_INC_MASK;
     channel->CHCFG |= minc;
     int psize = DMA_InitParam->PeriphDataSize;
-    channel->CHCFG &= ~((uint32_t)0x0300);
+    channel->CHCFG &= ~DMA_CHCFG_PERIPH_DATA_SIZE_MASK;
     channel->CHCFG |= psize;
     int msize = DMA_InitParam->MemDataSize;
-    channel->CHCFG &= ~((uint32_t)0x0c00);
+    channel->CHCFG &= ~DMA_CHCFG_MEM_DATA_SIZE_MASK;
     channel->CHCFG |= msize;
     int circ = DMA_InitParam->CircularMode;
-    channel->CHCFG &= ~((uint32_t)0x0020);
+    channel->CHCFG &= ~DMA_CHCFG_CIRC_MASK;
     channel->CHCFG |= circ;
     int prio = DMA_InitParam->Priority;
-    channel->CHCFG &= ~((uint32_t)0x3000);
+    channel->CHCFG &= ~DMA_CHCFG_PRIORITY_MASK;
     channel->CHCFG |= prio;
     int m2m = DMA_InitParam->Mem2Mem;
-    channel->CHCFG &= ~((uint32_t)0x4000);
+    channel->CHCFG &= ~DMA_CHCFG_M2M_MASK;
     channel->CHCFG |= m2m;
 }
 
 void
 DMA_EnableChannel(DMA_ChannelType *channel)
 {
-    channel->CHCFG |= (uint32_t)0x0001;
+    channel->CHCFG |= DMA_CHCFG_CHEN;
 }
 
 void
 DMA_DisableChannel(DMA_ChannelType *channel)
 {
-    channel->CHCFG &= ~((uint32_t)0x0001);
+    channel->CHCFG &= ~DMA_CHCFG_CHEN;
 }
 
 void

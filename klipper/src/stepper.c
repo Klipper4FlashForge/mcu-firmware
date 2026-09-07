@@ -271,7 +271,8 @@ command_reset_step_clock(uint32_t *args)
     uint32_t waketime = args[1];
     irq_disable();
     if (s->count)
-        shutdown_ec(FF_EC_STEPPER_ACTIVE, "Can't reset time when stepper active");
+        shutdown_ec(FF_EC_STEPPER_ACTIVE
+                    , "Can't reset time when stepper active");
     s->next_step_time = s->time.waketime = waketime;
     s->flags &= ~SF_NEED_RESET;
     irq_enable();

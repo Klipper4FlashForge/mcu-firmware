@@ -439,9 +439,10 @@ command_set_trigger_threshold(uint32_t *args)
 }
 
 
-// Response ids: reversed, this is the order the data dictionary numbers
-// them in.  An id is handed out on a marker's first appearance, so these
-// win over the copies inside the bodies above.
+// The data dictionary numbers responses in marker order, and the host's
+// ids must not move between builds.  Registering them here pins them: an
+// id is handed out on a marker's first appearance, so these win over the
+// copies inside the bodies above.
 DECL_CTR("_DECL_ENCODER identify_response offset=%u data=%.*s");
 DECL_CTR("_DECL_ENCODER peel_data value=%i");
 DECL_CTR("_DECL_ENCODER pa_value value=%u");
@@ -449,8 +450,8 @@ DECL_CTR("_DECL_ENCODER param_value value=%u reserve=%u");
 DECL_CTR("_DECL_ENCODER mcu_version year=%u date=%u version=%u");
 DECL_CTR("_DECL_ENCODER trigger_threshold threshold=%i");
 
-// Command ids: reversed, this is 1=identify, 2..7 the FlashForge block,
-// 8=clear_shutdown, 9=emergency_stop.
+// Commands are pinned the same way: 1=identify, 2..7 the FlashForge
+// block, 8=clear_shutdown, 9=emergency_stop.
 DECL_COMMAND_FLAGS(command_emergency_stop, HF_IN_SHUTDOWN, "emergency_stop");
 DECL_COMMAND_FLAGS(command_clear_shutdown, HF_IN_SHUTDOWN, "clear_shutdown");
 DECL_COMMAND(command_remove_peel, "remove_peel action=%u");
