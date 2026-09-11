@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""mainBoardGD base/debug command source profile."""
+from gd_function_gate import main
+
+UNITS = {'base_commands': ('base_commands.c', []),
+         'debug_commands': ('debug_commands.c', []),
+         'command_pointer': ('command_pointer.c', []),
+         'oid_commands': ('oid_commands.c', []),
+         'move_queue': ('move_queue.c', []),
+         'scheduler_helpers': ('scheduler_helpers.c', []),
+         'scheduler_timers': ('scheduler_timers.c', []),
+         'scheduler_add': ('scheduler_add.c', []),
+         'scheduler_main': ('scheduler_main.c', []),
+         'statistics': ('statistics.c', []),
+         'scheduler_shutdown': ('scheduler_shutdown.c', []),
+         'memory_bounds': ('memory_bounds.c', [])}
+CASES = [('alloc_init', 0x7a8, 24), ('command_clear_shutdown', 0xd10, 4),
+         ('command_debug_nop', 0xfa0, 2), ('command_debug_ping', 0xfa8, 48),
+         ('command_debug_read', 0xfd8, 76), ('command_debug_write', 0x1028, 58),
+         ('command_decode_ptr', 0x1068, 2), ('command_emergency_stop', 0x11c0, 28),
+         ('command_get_clock', 0x16c8, 44), ('command_get_config', 0x16f8, 124),
+         ('command_get_uptime', 0x17f0, 76), ('command_identify', 0x1840, 104)]
+CASE_UNITS = {name: 'command_pointer' if name == 'command_decode_ptr' else
+              'debug_commands' if name.startswith('command_debug') else 'base_commands'
+              for name, _, _ in CASES}
+for name, address, size, unit in [
+        ('move_alloc', 0x3dd8, 60, 'move_queue'),
+        ('move_free', 0x3e18, 16, 'move_queue'),
+        ('move_queue_clear', 0x3e28, 6, 'move_queue'),
+        ('move_queue_empty', 0x3e30, 10, 'move_queue'),
+        ('move_queue_first', 0x3e40, 4, 'move_queue'),
+        ('move_queue_pop', 0x3e48, 10, 'move_queue'),
+        ('move_queue_push', 0x3e58, 40, 'move_queue'),
+        ('move_queue_setup', 0x3e80, 84, 'move_queue'),
+        ('move_reset', 0x3ed8, 86, 'move_queue'),
+        ('command_allocate_oids', 0xb30, 132, 'oid_commands'),
+        ('oid_alloc', 0x3f30, 164, 'oid_commands'),
+        ('oid_lookup', 0x3fd8, 72, 'oid_commands'),
+        ('oid_next', 0x4020, 58, 'oid_commands'),
+        ('deleted_event', 0x2848, 4, 'scheduler_helpers'),
+        ('dynmem_end', 0x2d78, 14, 'memory_bounds'),
+        ('dynmem_start', 0x2d88, 10, 'memory_bounds'),
+        ('periodic_event', 0x4060, 58, 'scheduler_helpers'),
+        ('sched_add_timer', 0x40a0, 192, 'scheduler_add'),
+        ('sched_check_wake', 0x4160, 20, 'scheduler_helpers'),
+        ('sched_clear_shutdown', 0x4178, 72, 'scheduler_helpers'),
+        ('sched_del_timer', 0x41c0, 96, 'scheduler_timers'),
+        ('sched_is_shutdown', 0x4220, 18, 'scheduler_helpers'),
+        ('sched_main', 0x4238, 356, 'scheduler_main'),
+        ('sched_report_shutdown', 0x43a0, 108, 'scheduler_main'),
+        ('sched_shutdown', 0x4410, 20, 'scheduler_shutdown'),
+        ('sched_tasks_busy', 0x4428, 24, 'scheduler_helpers'),
+        ('sched_timer_dispatch', 0x4440, 148, 'scheduler_timers'),
+        ('sched_try_shutdown', 0x44d8, 20, 'scheduler_helpers'),
+        ('sched_wake_task', 0x44f0, 18, 'scheduler_helpers'),
+        ('sched_wake_tasks', 0x4508, 14, 'scheduler_helpers'),
+        ('sentinel_event', 0x4528, 36, 'scheduler_helpers'),
+        ('stats_update', 0x46c8, 232, 'statistics'),
+        ('timer_from_us', 0x5130, 8, 'memory_bounds')]:
+    CASES.append((name, address, size))
+    CASE_UNITS[name] = unit
+SYMBOLS = {'dynmem_start': 0x2d89, 'alloc_end': 0x24003810,
+           'command_decode_ptr': 0x1069, 'ctr_lookup_encoder': 0x21a1,
+           'ctr_lookup_static_string': 0x2421, 'command_sendf': 0x1ca9,
+           'irq_save': 0x38a1, 'irq_restore': 0x3899,
+           'timer_read_time': 0x5581, 'sched_is_shutdown': 0x4221,
+           'sched_clear_shutdown': 0x4179, 'sched_shutdown': 0x4411,
+           'move_count': 0x2400881e, 'config_crc': 0x24003818,
+           'stats_send_time': 0x24008a9c, 'stats_send_time_high': 0x24008aa0,
+           'command_identify_size': 0x655c, 'command_identify_data': 0x5d98,
+           'dynamic_memory': 0x2400381c, 'tasks_status': 0x2400328c,
+           'shutdown_status': 0x24003290, 'periodic_timer': 0x24002e60,
+           'sentinel_timer': 0x24002e6c, 'timer_from_us': 0x5131,
+           'irq_disable': 0x3881, 'shutdown_jmp': 0x240089f8, 'longjmp': 0x5c2b,
+           'dynmem_end': 0x2d79, 'oids': 0x24008830, 'oid_count': 0x2400882c,
+           'generated_string_0000692a': 0x692a, '__aeabi_memclr': 0x5b45,
+           'sched_timer_list': 0x24002188, 'sched_last_insert': 0x2400218c,
+           'deleted_timer': 0x24002190, 'timer_is_before': 0x5519,
+           'stepper_event': 0x47b1, 'ff_temp_waketime': 0x24003294,
+           'ff_close_num': 0x24002e88, 'ff_timer_close': 0x24008a98,
+           'shutdown_reason': 0x24003292, 'timer_kick': 0x5521,
+           'irq_enable': 0x3889, 'irq_poll': 0x3891, 'irq_wait': 0x38a9,
+           'ctr_run_initfuncs': 0x27c9, 'ctr_run_shutdownfuncs': 0x27e9,
+           'ctr_run_taskfuncs': 0x2811, 'stats_update': 0x46c9,
+           'setjmp': 0x5c21, 'generated_string_00006d10': 0x6d10,
+           'stats_count': 0x24008aa4, 'stats_sum': 0x24008aa8,
+           'stats_sumsq': 0x24008aac, 'move_free_list': 0x24008820,
+           'move_list': 0x24008828, 'move_item_size': 0x24008824}
+
+if __name__ == '__main__':
+    raise SystemExit(main('base', CASES, UNITS, CASE_UNITS, SYMBOLS))

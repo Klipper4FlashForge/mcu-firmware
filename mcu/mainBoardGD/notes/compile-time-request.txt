@@ -1,0 +1,144 @@
+00000010 _DECL_STATIC_STR Stepper too far in past
+00000039 DECL_COMMAND_FLAGS command_config_stepper 0 config_stepper oid=%c step_pin=%c dir_pin=%c invert_step=%c step_pulse_ticks=%u
+000000b5 _DECL_STATIC_STR Invalid count parameter
+000000de DECL_COMMAND_FLAGS command_queue_step 0 queue_step oid=%c interval=%u count=%hu add=%hi
+00000136 DECL_COMMAND_FLAGS command_set_next_step_dir 0 set_next_step_dir oid=%c dir=%c
+00000185 _DECL_STATIC_STR Can't reset time when stepper active
+000001bb DECL_COMMAND_FLAGS command_reset_step_clock 0 reset_step_clock oid=%c clock=%u
+0000020a _DECL_ENCODER stepper_position oid=%c pos=%i
+00000237 DECL_COMMAND_FLAGS command_stepper_get_position 0 stepper_get_position oid=%c
+00000285 DECL_COMMAND_FLAGS command_stepper_stop_on_trigger 0 stepper_stop_on_trigger oid=%c trsync_oid=%c
+000002e7 _DECL_CALLLIST ctr_run_shutdownfuncs stepper_shutdown
+0000031d _DECL_STATIC_STR Command parser error
+00000343 _DECL_CALLLIST ctr_run_shutdownfuncs sendf_shutdown
+00000377 _DECL_STATIC_STR Message encode error
+0000039d _DECL_STATIC_STR Invalid command
+000003be _DECL_STATIC_STR Timer too close
+000003df _DECL_STATIC_STR Shutdown cleared when not shutdown
+00000413 _DECL_ENCODER GDMainboard close=%hu Close_num=%hu Temp_waketime=%hu
+00000457 _DECL_ENCODER is_shutdown static_string_id=%hu
+00000486 _DECL_ENCODER starting
+0000049d _DECL_STATIC_STR sentinel timer called
+000004c4 _DECL_ENCODER shutdown clock=%u static_string_id=%hu
+000004f9 _DECL_CALLLIST ctr_run_initfuncs alloc_init
+00000525 _DECL_STATIC_STR alloc_chunk failed
+00000549 _DECL_STATIC_STR Move queue overflow
+0000056e _DECL_STATIC_STR Invalid move request size
+00000599 _DECL_CALLLIST ctr_run_shutdownfuncs move_reset
+000005c9 _DECL_STATIC_STR Invalid oid type
+000005eb _DECL_STATIC_STR Can't assign oid
+0000060d _DECL_STATIC_STR oids already allocated
+00000635 DECL_COMMAND_FLAGS command_allocate_oids 0 allocate_oids count=%c
+00000677 _DECL_ENCODER config is_config=%c crc=%u is_shutdown=%c move_count=%hu
+000006be DECL_COMMAND_FLAGS command_get_config 0x01 get_config
+000006f4 DECL_COMMAND_FLAGS command_finalize_config 0 finalize_config crc=%u
+00000738 _DECL_STATIC_STR config_reset only available when shutdown
+00000773 _DECL_ENCODER clock clock=%u
+00000790 DECL_COMMAND_FLAGS command_get_clock 0x01 get_clock
+000007c4 _DECL_ENCODER uptime high=%u clock=%u
+000007ea DECL_COMMAND_FLAGS command_get_uptime 0x01 get_uptime
+00000820 DECL_CONSTANT STATS_SUMSQ_BASE +0x00000100
+0000084b _DECL_ENCODER stats count=%u sum=%u sumsq=%u
+00000878 _DECL_STATIC_STR Command request
+00000899 DECL_COMMAND_FLAGS command_emergency_stop 0x01 emergency_stop
+000008d7 DECL_COMMAND_FLAGS command_clear_shutdown 0x01 clear_shutdown
+00000915 _DECL_ENCODER identify_response offset=%u data=%.*s
+00000949 DECL_COMMAND_FLAGS command_identify 0x01 identify offset=%u count=%c
+0000098e _DECL_ENCODER pa_value value=%u
+000009ae DECL_COMMAND_FLAGS command_get_pa 0 get_emcu_pa_value
+000009e4 DECL_COMMAND_FLAGS command_pa_action 0 pa_action action=%u pc=%u
+00000a25 DECL_COMMAND_FLAGS command_remove_peel 0 remove_peel action=%u
+00000a64 _DECL_ENCODER mcu_version year=%u date=%u version=%u
+00000a99 DECL_COMMAND_FLAGS command_get_mcu_version 0 get_mcu_version
+00000ad6 _DECL_ENCODER param_value value=%u reserve=%u
+00000b04 DECL_COMMAND_FLAGS command_get_basic_param 0 get_basic_param num=%u
+00000b48 _DECL_STATIC_STR Already finalized
+00000b6b _DECL_STATIC_STR alloc_chunks failed
+00000b90 DECL_COMMAND_FLAGS command_config_digital_out 0 config_digital_out oid=%c pin=%u value=%c default_value=%c max_duration=%u
+00000c0b _DECL_STATIC_STR Can not set soft pwm cycle ticks while updates pending
+00000c53 DECL_COMMAND_FLAGS command_set_digital_out_pwm_cycle 0 set_digital_out_pwm_cycle oid=%c cycle_ticks=%u
+00000cba _DECL_STATIC_STR Scheduled digital out event will exceed max_duration
+00000d00 DECL_COMMAND_FLAGS command_queue_digital_out 0 queue_digital_out oid=%c clock=%u on_ticks=%u
+00000d5d _DECL_STATIC_STR update_digital_out not valid with active queue
+00000d9d DECL_COMMAND_FLAGS command_update_digital_out 0 update_digital_out oid=%c value=%c
+00000df0 _DECL_CALLLIST ctr_run_shutdownfuncs digital_out_shutdown
+00000e2a DECL_COMMAND_FLAGS command_set_digital_out 0 set_digital_out pin=%u value=%c
+00000e77 _DECL_STATIC_STR Missed scheduling of next digital out event
+00000eb4 _DECL_STATIC_STR Scheduled digital out event will exceed max_duration
+00000efa _DECL_ENCODER debug_result val=%u
+00000f1c DECL_COMMAND_FLAGS command_debug_read 0x01 debug_read order=%c addr=%u
+00000f63 DECL_COMMAND_FLAGS command_debug_write 0x01 debug_write order=%c addr=%u val=%u
+00000fb3 _DECL_ENCODER pong data=%*s
+00000fcf DECL_COMMAND_FLAGS command_debug_ping 0x01 debug_ping data=%*s
+0000100e DECL_COMMAND_FLAGS command_debug_nop 0x01 debug_nop
+00001042 DECL_COMMAND_FLAGS command_config_endstop 0 config_endstop oid=%c pin=%c pull_up=%c
+00001096 DECL_COMMAND_FLAGS command_endstop_home 0 endstop_home oid=%c clock=%u sample_ticks=%u sample_count=%c rest_ticks=%u pin_value=%c trsync_oid=%c trigger_reason=%c
+00001138 _DECL_ENCODER endstop_state oid=%c homing=%c next_clock=%u pin_value=%c
+00001180 DECL_COMMAND_FLAGS command_endstop_query_state 0 endstop_query_state oid=%c
+000011cc DECL_INITIAL_PINS ""
+000011e1 _DECL_CALLLIST ctr_run_initfuncs initial_pins_setup
+00001215 DECL_COMMAND_FLAGS command_config_trsync 0 config_trsync oid=%c
+00001255 _DECL_STATIC_STR Can't add signal that is already active
+0000128e DECL_COMMAND_FLAGS command_trsync_start 0 trsync_start oid=%c report_clock=%u report_ticks=%u expire_reason=%c
+000012fd DECL_COMMAND_FLAGS command_trsync_set_timeout 0 trsync_set_timeout oid=%c clock=%u
+00001350 DECL_COMMAND_FLAGS command_trsync_trigger 0 trsync_trigger oid=%c reason=%c
+0000139c _DECL_CALLLIST ctr_run_taskfuncs trsync_task
+000013c9 _DECL_CALLLIST ctr_run_shutdownfuncs trsync_shutdown
+000013fe _DECL_ENCODER trsync_state oid=%c can_trigger=%c trigger_reason=%c clock=%u
+0000144a DECL_COMMAND_FLAGS command_config_analog_in 0 config_analog_in oid=%c pin=%u
+00001497 DECL_COMMAND_FLAGS command_query_analog_in 0 query_analog_in oid=%c clock=%u sample_ticks=%u sample_count=%c rest_ticks=%u min_value=%hu max_value=%hu range_check_count=%c
+00001543 _DECL_ENCODER analog_in_state oid=%c next_clock=%u value=%hu
+00001580 _DECL_CALLLIST ctr_run_taskfuncs analog_in_task
+000015b0 _DECL_CALLLIST ctr_run_shutdownfuncs analog_in_shutdown
+000015e8 _DECL_STATIC_STR ADC out of range
+0000160a DECL_ENUMERATION stepper stepper_x +0x00000000
+00001639 DECL_ENUMERATION stepper stepper_y +0x00000001
+00001668 DECL_ENUMERATION stepper stepper_z +0x00000002
+00001697 DECL_ENUMERATION stepper extruder +0x00000003
+000016c5 _DECL_CALLLIST ctr_run_initfuncs mclib_init
+000016f1 DECL_COMMAND_FLAGS command_config_mclib 0 config_mclib oid=%c stepper=%u rs=%u ls=%u km=%u
+0000174c DECL_COMMAND_FLAGS command_mclib_config_microstep 0 mclib_config_microstep oid=%c interpolate=%c mstep=%u
+000017b6 DECL_COMMAND_FLAGS command_mclib_config_stalldetect 0 mclib_config_stalldetect oid=%c stallthrs=%u
+00001819 DECL_COMMAND_FLAGS command_mclib_set_current 0 mclib_set_current oid=%c run_current=%u hold_current=%u
+00001880 DECL_COMMAND_FLAGS command_mclib_set_pid_params 0 mclib_set_pid_params oid=%c kp=%u ki=%u
+000018da DECL_COMMAND_FLAGS command_mclib_identify_motor 0 mclib_identify_motor oid=%c umax=%u umin=%u
+00001938 DECL_COMMAND_FLAGS command_mclib_set_resonance_damp 0 mclib_set_resonance_damp oid=%c tdx=%c amp=%u phase1=%u phase2=%u
+000019b0 _DECL_STATIC_STR Max of 8 buttons
+000019d2 DECL_COMMAND_FLAGS command_config_buttons 0 config_buttons oid=%c button_count=%c
+00001a24 _DECL_STATIC_STR Set button past maximum button count
+00001a5a DECL_COMMAND_FLAGS command_buttons_add 0 buttons_add oid=%c pos=%c pin=%u pull_up=%c
+00001aaf _DECL_STATIC_STR Invalid buttons retransmit count
+00001ae1 DECL_COMMAND_FLAGS command_buttons_query 0 buttons_query oid=%c clock=%u rest_ticks=%u retransmit_count=%c invert=%c
+00001b56 DECL_COMMAND_FLAGS command_buttons_ack 0 buttons_ack oid=%c count=%c
+00001b9b _DECL_ENCODER buttons_state oid=%c ack_count=%c state=%*s
+00001bd5 _DECL_CALLLIST ctr_run_taskfuncs buttons_task
+00001c03 DECL_CONSTANT SERIAL_BAUD +0x00038400
+00001c29 DECL_CONSTANT RECEIVE_WINDOW +0x00000180
+00001c52 _DECL_CALLLIST ctr_run_taskfuncs console_task
+00001c80 _DECL_CALLLIST ctr_run_shutdownfuncs clear_active_irq
+00001cb6 DECL_COMMAND_FLAGS command_reset 0x01 reset
+00001ce2 DECL_CONSTANT CLOCK_FREQ +0x23C34600
+00001d07 _DECL_CALLLIST ctr_run_shutdownfuncs timer_reset
+00001d38 _DECL_CALLLIST ctr_run_initfuncs timer_cnt_init
+00001d68 DECL_ARMCM_IRQ SysTick_Handler -0x00000001
+00001d93 _DECL_CALLLIST ctr_run_taskfuncs timer_task
+00001dbf _DECL_STATIC_STR Rescheduled timer in the past
+00001dee _DECL_CALLLIST ctr_run_taskfuncs watchdog_reset
+00001e1e _DECL_CALLLIST ctr_run_initfuncs watchdog_init
+00001e4d DECL_ENUMERATION_RANGE pin PA0 +0x00000000 +0x00000010
+00001e84 DECL_ENUMERATION_RANGE pin PB0 +0x00000010 +0x00000010
+00001ebb DECL_ENUMERATION_RANGE pin PC0 +0x00000020 +0x00000010
+00001ef2 DECL_ENUMERATION_RANGE pin PD0 +0x00000030 +0x00000010
+00001f29 DECL_ENUMERATION_RANGE pin PE0 +0x00000040 +0x00000010
+00001f60 DECL_ENUMERATION_RANGE pin PF0 +0x00000050 +0x00000010
+00001f97 DECL_ENUMERATION_RANGE pin PG0 +0x00000060 +0x00000010
+00001fce DECL_ENUMERATION_RANGE pin PH0 +0x00000070 +0x00000010
+00002005 DECL_ENUMERATION_RANGE pin PJ0 +0x00000090 +0x00000010
+0000203c _DECL_STATIC_STR Not an output pin
+0000205f _DECL_STATIC_STR Not a valid input pin
+00002086 DECL_CONSTANT ADC_MAX +0x00000FFF
+000020a8 DECL_ENUMERATION pin ADC_TEMPERATURE +0x000000FE
+000020d9 _DECL_STATIC_STR Not a valid ADC pin
+000020fe DECL_CONSTANT_STR RESERVE_PINS_serial PA9,P10
+0000212c DECL_ARMCM_IRQ USART0_IRQHandler +0x00000025
+00002159 _DECL_CALLLIST ctr_run_initfuncs serial_init

@@ -124,9 +124,44 @@ built on a different machine (the 1.9.4 one was not), which is worth
 checking before assuming the environment is identical. Both need a
 144 MHz clock option upstream does not offer for this family.
 
-`mainBoardGD` is a different job: GCC 7.3.1 on Ubuntu, a GD32H7 port
-upstream does not have at all, and no shared toolchain evidence with the
-other three. Nothing measured on the STM32 boards transfers to it.
+`mainBoardGD` is a different job, and reconnaissance has shown it is a
+bigger one than the table suggests: it was **built by armclang and linked
+by armlink, not by GCC** (`Region$$Table`, `__scatterload`, LZ77
+`__decompress`, and `movw`/`movt` where GCC pools), the
+GCC 7.3.1 in its `build_versions` belongs to a first build stage that only
+generated the dictionary, its code runs from ITCM at address 0 behind a
+scatter load, and a third of the image is `mclib`, a field-oriented
+closed-loop stepper controller with no upstream. Nothing measured on the
+STM32 boards transfers to it -- including step 3. It gives more back than
+the others, though: this toolchain neither garbage-collects the `.ctr` nor
+folds `ctr_lookup_encoder`, so the whole of `out/compile_time_request.c`
+is readable out of the image, and it proves the generated layer disagrees
+with the sources next to it -- gate that board on its `.ctr`, never on its
+dictionary. Its C library is pinned by byte-exact match to **microlib**
+(`mc_w.l`), and its upstream base is the levelBoard's own `6d70050`; what
+is still open is the armclang *version*, which microlib cannot date and
+which needs an ARMLMD licence to sweep. `mcu/mainBoardGD/notes/recon.md`
+is the account.
+
+The mainBoardGD continuation has a working open compiler: ATfE 22.1.0 at
+`work/atfe/ATfE-22.1.0-Linux-x86_64/bin/clang`. Do not treat the old AC6.16
+licence failure as blocking all compilation. `mcu/mainBoardGD/recovered/README.md`
+records real C source, exact isolated code/data gates, the measured candidate
+global compiler settings and remaining mismatches. `mcu/mainBoardGD/PLAN.md`
+is the current scoreboard, and `tools/build-gd-image.py` gives the whole-image
+differing-byte count (14,809 of 45,552 on 2026-09-11). None of those gates
+proves a complete firmware build. **22.1.0 was a stand-in, not the compiler.**
+Licensed Arm Compiler 6.20-6.23 are at `work/atfe/ac6.2x/` (Keil MDK Community
+licence in `~/.armlm`, activated as user `shish`, renews weekly and the
+licence server is geoblocked here - re-copy the cache from the activating
+host when it lapses). `mcu/mainBoardGD/notes/compiler-version-sweep.md`:
+6.20 at `-O1` scores 212/281 exact against 22.1.0's 187, `-O1` beats every
+`-O2` variant, older is better, 6.19/6.18 still untested. Score source changes
+with `tools/sweep-gd-compilers.py --no-compat --cflag=-O1 ac6.20=...`, not
+with 22.1.0, and link the five microlib bodies from `mc_w.l` rather than
+reconstructing them as C. The user goal remains a binary-identical mainBoardGD decompilation;
+source reconstruction and integration must continue until whole-image equality
+is verified.
 
 **Evidence from one board does not transfer to another.** The four are
 not on one upstream base: eBoard carries the multi-bus `config_lis2dw`
@@ -210,6 +245,10 @@ record.
 | `permute.py` | older in-tree variant runner (one function, a list of spellings); superseded by the permuter but still works |
 | `permuter/newtarget.sh <fn> <addr> <size> <src>` | builds `base.c`, `target.o`, `compile.sh`, `settings.toml`, prints the base score |
 | `extract-dict.py`, `compare-dict.py <ours.dict> <stock.json>`, `compare-blob.py <out-dir> <stock.bin>` | dictionary and identify-blob gates |
+| `scatterload.py <img> <load> [--out DIR]` | unpack an ARM-Compiler-linked image: `Region$$Table`, LZ77 `__decompress`, one file per load region. Needed before anything else on mainBoardGD, whose code runs from ITCM at 0 |
+| `extract-ctr.py <data-region.bin>` | recover Klipper's whole `.compile_time_request` text from an image whose linker did not garbage-collect it (mainBoardGD only, so far) |
+| `codegen-style.py <img> <load> ...` | literal pools against `movw`/`movt`, and r7 in prologues: separates a GCC-built image from an LLVM-built one. Run a known board beside the unknown |
+| `libscan.py <img> <lib-dir> ...` | the `objalign.py` argument against Arm's C libraries: which `armlib`/`microlib` members appear in the image byte for byte. Reads `ar` and ELF directly -- `objcopy -j` silently empties Arm's `!!`-named code sections -- and carries `--self-test`, which must pass before a miss means anything |
 | `ExportGhidra.java` | headless Ghidra decompile of a whole image |
 
 Permuter settings go under `[weight_overrides]`. A `[weights]` table is

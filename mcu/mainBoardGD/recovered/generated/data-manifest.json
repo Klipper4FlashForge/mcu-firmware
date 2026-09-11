@@ -1,0 +1,618 @@
+{
+  "image_sha256": "9653998b1f3ba754a2ab3d045d0941b8e08c1bfa444d2f5bfc5cecaf0bab1c50",
+  "purpose": "Generated data only; lookup code is not byte-matched",
+  "sections": [
+    {
+      "address": 9104,
+      "name": ".gd_generated_00002390",
+      "raw_hex": "7374617274696e6700",
+      "size": 9
+    },
+    {
+      "address": 9116,
+      "name": ".gd_generated_0000239c",
+      "raw_hex": "69735f73687574646f776e207374617469635f737472696e675f69643d25687500",
+      "size": 33
+    },
+    {
+      "address": 9152,
+      "name": ".gd_generated_000023c0",
+      "raw_hex": "73687574646f776e20636c6f636b3d2575207374617469635f737472696e675f69643d25687500",
+      "size": 39
+    },
+    {
+      "address": 9192,
+      "name": ".gd_generated_000023e8",
+      "raw_hex": "6d63755f76657273696f6e20796561723d257520646174653d25752076657273696f6e3d257500",
+      "size": 39
+    },
+    {
+      "address": 9232,
+      "name": ".gd_generated_00002410",
+      "raw_hex": "636c6f636b20636c6f636b3d257500",
+      "size": 15
+    },
+    {
+      "address": 10040,
+      "name": ".gd_generated_00002738",
+      "raw_hex": "53687574646f776e20636c6561726564207768656e206e6f742073687574646f776e00",
+      "size": 35
+    },
+    {
+      "address": 10076,
+      "name": ".gd_generated_0000275c",
+      "raw_hex": "54696d657220746f6f20636c6f736500",
+      "size": 16
+    },
+    {
+      "address": 10092,
+      "name": ".gd_generated_0000276c",
+      "raw_hex": "73656e74696e656c2074696d65722063616c6c656400",
+      "size": 22
+    },
+    {
+      "address": 10116,
+      "name": ".gd_generated_00002784",
+      "raw_hex": "496e76616c696420636f6d6d616e6400",
+      "size": 16
+    },
+    {
+      "address": 10132,
+      "name": ".gd_generated_00002794",
+      "raw_hex": "4d65737361676520656e636f6465206572726f7200",
+      "size": 21
+    },
+    {
+      "address": 10156,
+      "name": ".gd_generated_000027ac",
+      "raw_hex": "436f6d6d616e6420706172736572206572726f7200",
+      "size": 21
+    },
+    {
+      "address": 23816,
+      "name": ".gd_generated_00005d08",
+      "raw_hex": "00004002db680000",
+      "size": 8
+    },
+    {
+      "address": 23824,
+      "name": ".gd_generated_00005d10",
+      "raw_hex": "3200060000000000",
+      "size": 8
+    },
+    {
+      "address": 23832,
+      "name": ".gd_generated_00005d18",
+      "raw_hex": "3300090182680000",
+      "size": 8
+    },
+    {
+      "address": 23840,
+      "name": ".gd_generated_00005d20",
+      "raw_hex": "34000e0283680000",
+      "size": 8
+    },
+    {
+      "address": 23848,
+      "name": ".gd_generated_00005d28",
+      "raw_hex": "35000f03a2680000",
+      "size": 8
+    },
+    {
+      "address": 23856,
+      "name": ".gd_generated_00005d30",
+      "raw_hex": "36001503d7680000",
+      "size": 8
+    },
+    {
+      "address": 23864,
+      "name": ".gd_generated_00005d38",
+      "raw_hex": "37000b01da680000",
+      "size": 8
+    },
+    {
+      "address": 23872,
+      "name": ".gd_generated_00005d40",
+      "raw_hex": "38001503d7680000",
+      "size": 8
+    },
+    {
+      "address": 23880,
+      "name": ".gd_generated_00005d48",
+      "raw_hex": "39001002dd680000",
+      "size": 8
+    },
+    {
+      "address": 23888,
+      "name": ".gd_generated_00005d50",
+      "raw_hex": "3a000b01da680000",
+      "size": 8
+    },
+    {
+      "address": 23896,
+      "name": ".gd_generated_00005d58",
+      "raw_hex": "3b001204df680000",
+      "size": 8
+    },
+    {
+      "address": 23904,
+      "name": ".gd_generated_00005d60",
+      "raw_hex": "3c004001e3680000",
+      "size": 8
+    },
+    {
+      "address": 23912,
+      "name": ".gd_generated_00005d68",
+      "raw_hex": "3d000b01da680000",
+      "size": 8
+    },
+    {
+      "address": 23920,
+      "name": ".gd_generated_00005d70",
+      "raw_hex": "3e000d02e4680000",
+      "size": 8
+    },
+    {
+      "address": 23928,
+      "name": ".gd_generated_00005d78",
+      "raw_hex": "3f00110485680000",
+      "size": 8
+    },
+    {
+      "address": 23936,
+      "name": ".gd_generated_00005d80",
+      "raw_hex": "4000110489680000",
+      "size": 8
+    },
+    {
+      "address": 23944,
+      "name": ".gd_generated_00005d88",
+      "raw_hex": "410010038d680000",
+      "size": 8
+    },
+    {
+      "address": 23952,
+      "name": ".gd_generated_00005d90",
+      "raw_hex": "4200400390680000",
+      "size": 8
+    },
+    {
+      "address": 23960,
+      "name": ".gd_generated_00005d98",
+      "raw_hex": "78da9d586b6fe3b612fd2b848045dbdb64af2d2b766c6071e13aee36ed7a9be6d15ea028045aa26d227a2d45e5b145fe7bcf0c4549797cea7e588be40c399c39337398bf035955c122f825d355a54c70146c1b9da5f19d32b52e8b1a4bfb2459886f3f7ebe11d76599d562571ab134b958e75b95a62a1517a64c545d97a616b3e370343e3dfe121e37552aadfa4eccde4fde8f05cd8ea66128be352a53b2c6c29fcbcbcd7f55bbc7f1ec786b64911c8451779a4e16e1743c1fcdfe125b5d345667356c08df4fa2e3a8d936856dc6df8f27edd7778216607a52e6b92c5218fd7720b3ac4c60415ceab4164909c90fef9260319ed015adc5dd6299dc0a2c637e2030391d08a4a917a8ca9a7f74f1e15d23aa26cbe2a6628568d42b7c699479ecf68405b7246d546d63ab93dbda8d2cae5ae7dac6fe54a10b38bc3d7f8e8bc04726ae0f8d4dcbfb2258cce86ec54eef6359c8acdcc7bae8ec6283a0d6cbb4c67809378cfb1b46e34e34d57b6d6516978d7dbea1b89359a3689caa9d6c321b7713b97c88d3c6488b28f1d161d8eda7e07d5b56cff64a9e796bd21f9e2799de7ad1da2a02203b88dd94f1ffb7391f11cd3bad5670a817b7e7a4daf84fe75016eea59aac565d1c60f769b7a935f56391b47bc2c893a32055db661f1725b2631cf92176df0b005b7e78f71fc06cdcc91925011593d20d1201dc183e623cf302f7465bf54a82dcec04a74781ca95d9ab22798cc987c102e6b5fe8c0f65ae5ec1aa967995f517f2e30e54cf6107d3fb18bafbc6ed8ed6e8fd5e19ba444d31250f8cfac319d4b0495ad579284440761a60d45fe94472a2484ce2ee8210ef958db7b2d6495c49237351342e9013b7c47780e4a81df20618876eacf2a481a2b337589cb8599a6ceb120c70734d65750e1198a3535558bd43faed76b5b274e741da1f050cb7d8634f27a6245478afeac22a5395192ec92077c821e89dbe508523b22c555625b60721a6ecc1385c4533afe14d8af3d2961d641b641059d7e46dee469157a8c9198d3150f3d2a629fc14291d4a54e77e0ce5e950b9d2a9f37897feb715e79176c227436100a42c5075559c023a5ec1a60f8cd09c15ab03aaf5b8fb0add360823c22313aa01c2fdb0880300aee330f3aa5afd4bece63d760f0d17a07e845aba87e24125b7831a3799b20d8d7aabc47556a02c0ecac1c8abbcc285cb520f271c8af4c5af8612626d545edea9b8522aeb7d112ca6b40237c31f61fbc93b3bf0bfb4055b2136243334f84531068e4f5f09c5d57d1e278fe819dd9e3418de6cec940af5d09a804ae985f1e9321af6b6b535a6cc42c3d31cde2ee5a35e80eb0279cf558e0e3ac3b2020dc0a49da2e32953df8802823590b3d2f4d0575569da62e13a278f3b58a8874a1bf5ac6c45dd4e2f4c1b0a211c8e9ebc058e81afe74fbe4110a3589eade2cdf2ffd4f0e708d5ead3afab5fe21f2fd7bf21d4a3f6df51b059dd10674a27e1617632fbba072db95cafd6e7bfafe33fce3f9ffdfa07318c8826afd69798bc38ff7c05ef182d33e85d2ce74717e31194b07abefc14ffb0bc3923478e22dafcea7a797d155fdd6cae7ec3cad59a40337da24adda077704766f203d8788bafd79b8bf5e5f2fae692a571f2c572142cfe1c1d8da77f61f0030dd07ddc684523f8c78dce6884fae7466b1a4da376f4238d4efd2e1f6934f7bbfcc47b8efd363ff33062cd27c2100ca5481b345394c8d652c131d8b97c76705c66d4561f856f34a9a36f2b5988a2b402981275b94396dce70ef382a121ee0f1adf2ec4b5a8d0c770924b70e87e63297d45adf7d855d883b442d742b6675102df29978dad704da2040fd7dadc2ce7b32048e3385578fed2eb03642bc747050a32222c9431a56132e7178c42c1a92db7faf302c8d3a9f0ecada789aeeeb85ae3a55aaacbbdb19f8398e0ea8fee645cfef9452a51fe3cdcfdab72b4c62fe376c23e56caf5e08d7ca0509c7a635cbfdf80e4cbbd12a02865aafc7510a78dae6bbc036a14e1b4c9882241998a8d68f38b63abee14df022edc90315c6b05becc2e2bef1d99fa8cb04ae14c224c3090a93c0c177451b9d2e8680a2f1574443f8d332e556b0f2ca33019e821da0a0e228f5311b8ea045ed929ee7596a1c0240aab43c64b65019a88bdf30d6f47123a6f723fe70386b05eb5245e30a7c7668c16866f47efc994163eb62cc54eb2adce4eaabad76c3e2da114d68a5914bf6fd0f69ae2160ac07bead8e660beee17a61dd375b82d8b0c50bfc3b2dc661ec19d3db820bf9aba9c68df52a9636c35919a02cdceb935c1322d456f5655baa90bdbbdb687363d5ceca99b3d753d85ca0020639a94be277daf790816a37ef4c85cce8fbec2414fd823d3892ac83301bd533f5e7cba9b04dc732ba057714dfc78b691bad896d2a4ce8ddcc857f415333bc5e85ae5557c2f6f15dd8c66905fe46b4f639e91604678df9c3a46829438e95f84cf34e480a3085e71ef8829c5875941df144fbad709ca53cb3db96d32cba6391f30e6abc4403a7e02ed79ff32a9f17ceb1e1ad3714fec9fd986270632f7f5bd86ef06a84f7aa21d7bff0e18b77b1bbda74b21680323c5cbb2dfdac9c4bce3f5e21149d2eea3d8ab6ede792462d6c9c67877d334bc0d3386efb22901a64f3ccf39dfb620e496642cf78893916b50dd9f0ca0c64f17faa9bfb803074ce9054b727f26002f9c86434ad37b39911d697af3e53500c094138a3bcc41ef0f4c407b74cc80faee3114fcef381c85d3d149388fc751388a66c7ee6f23c1d33f379cffe1",
+      "size": 1986
+    },
+    {
+      "address": 25948,
+      "name": ".gd_generated_0000655c",
+      "raw_hex": "c2070000",
+      "size": 4
+    },
+    {
+      "address": 25952,
+      "name": ".gd_generated_00006560",
+      "raw_hex": "0000000000000000000000000000000001000201020000009368000041180000020000000000000000000000791700000300010001000000da680000911600000400020002000000dd680000091a0000050000000000000000000000c11700000600010001000000da680000191c0000070000010000000000000000110d0000080000010000000000000000c1110000090000010000000000000000f11700000a0000010000000000000000c91600000b00010001000000da680000611400000c0000010000000000000000f91600000d0001000100000095680000310b00000e0000010000000000000000a10f00000f00020101000000e3680000a90f000010000301030000009668000029100000110002010200000099680000d90f0000120002000200000093680000e11c000013000200020000009b680000811f0000140003000300000096680000891a0000150002000200000099680000f91c000016000500050000009d680000a90d000017000200020000009b680000091e0000180001000100000095680000a91d0000190002000200000099680000291c00001a000200020000009b680000711d00001b00040004000000a5680000591b00001c00050005000000a9680000090f00001d0001000100000095680000d11300001e00080008000000ae680000611300001f00030003000000b6680000090e000020000200020000009b680000e91e0000210002000200000099680000391e00002200040004000000b9680000791e0000230001000100000095680000790f00002400080008000000bd680000291a0000250002000200000099680000190d000026000200020000009b680000b90b00002700050005000000c5680000910c0000280004000400000085680000210c000029000200020000009b680000590d00002a0000010000000000000000211c00002b00050005000000ca680000a91900002c0003000300000096680000011900002d0003000300000096680000611900002e0003000300000096680000111900002f0002000200000099680000d11800003000030003000000cf680000a91800003100050005000000d2680000410e0000",
+      "size": 800
+    },
+    {
+      "address": 26752,
+      "name": ".gd_generated_00006880",
+      "raw_hex": "3200",
+      "size": 2
+    },
+    {
+      "address": 26754,
+      "name": ".gd_generated_00006882",
+      "raw_hex": "02",
+      "size": 1
+    },
+    {
+      "address": 26755,
+      "name": ".gd_generated_00006883",
+      "raw_hex": "0002",
+      "size": 2
+    },
+    {
+      "address": 26757,
+      "name": ".gd_generated_00006885",
+      "raw_hex": "04040004",
+      "size": 4
+    },
+    {
+      "address": 26761,
+      "name": ".gd_generated_00006889",
+      "raw_hex": "04040400",
+      "size": 4
+    },
+    {
+      "address": 26765,
+      "name": ".gd_generated_0000688d",
+      "raw_hex": "040002",
+      "size": 3
+    },
+    {
+      "address": 26768,
+      "name": ".gd_generated_00006890",
+      "raw_hex": "040407",
+      "size": 3
+    },
+    {
+      "address": 26771,
+      "name": ".gd_generated_00006893",
+      "raw_hex": "0004",
+      "size": 2
+    },
+    {
+      "address": 26773,
+      "name": ".gd_generated_00006895",
+      "raw_hex": "04",
+      "size": 1
+    },
+    {
+      "address": 26774,
+      "name": ".gd_generated_00006896",
+      "raw_hex": "040000",
+      "size": 3
+    },
+    {
+      "address": 26777,
+      "name": ".gd_generated_00006899",
+      "raw_hex": "0400",
+      "size": 2
+    },
+    {
+      "address": 26779,
+      "name": ".gd_generated_0000689b",
+      "raw_hex": "0404",
+      "size": 2
+    },
+    {
+      "address": 26781,
+      "name": ".gd_generated_0000689d",
+      "raw_hex": "0400040400",
+      "size": 5
+    },
+    {
+      "address": 26786,
+      "name": ".gd_generated_000068a2",
+      "raw_hex": "020202",
+      "size": 3
+    },
+    {
+      "address": 26789,
+      "name": ".gd_generated_000068a5",
+      "raw_hex": "04000203",
+      "size": 4
+    },
+    {
+      "address": 26793,
+      "name": ".gd_generated_000068a9",
+      "raw_hex": "0404040400",
+      "size": 5
+    },
+    {
+      "address": 26798,
+      "name": ".gd_generated_000068ae",
+      "raw_hex": "0400000400040404",
+      "size": 8
+    },
+    {
+      "address": 26806,
+      "name": ".gd_generated_000068b6",
+      "raw_hex": "040404",
+      "size": 3
+    },
+    {
+      "address": 26809,
+      "name": ".gd_generated_000068b9",
+      "raw_hex": "04000004",
+      "size": 4
+    },
+    {
+      "address": 26813,
+      "name": ".gd_generated_000068bd",
+      "raw_hex": "0400000400020204",
+      "size": 8
+    },
+    {
+      "address": 26821,
+      "name": ".gd_generated_000068c5",
+      "raw_hex": "0400000404",
+      "size": 5
+    },
+    {
+      "address": 26826,
+      "name": ".gd_generated_000068ca",
+      "raw_hex": "0404000000",
+      "size": 5
+    },
+    {
+      "address": 26831,
+      "name": ".gd_generated_000068cf",
+      "raw_hex": "040400",
+      "size": 3
+    },
+    {
+      "address": 26834,
+      "name": ".gd_generated_000068d2",
+      "raw_hex": "0400000000",
+      "size": 5
+    },
+    {
+      "address": 26839,
+      "name": ".gd_generated_000068d7",
+      "raw_hex": "000000",
+      "size": 3
+    },
+    {
+      "address": 26842,
+      "name": ".gd_generated_000068da",
+      "raw_hex": "00",
+      "size": 1
+    },
+    {
+      "address": 26843,
+      "name": ".gd_generated_000068db",
+      "raw_hex": "0006",
+      "size": 2
+    },
+    {
+      "address": 26845,
+      "name": ".gd_generated_000068dd",
+      "raw_hex": "0000",
+      "size": 2
+    },
+    {
+      "address": 26847,
+      "name": ".gd_generated_000068df",
+      "raw_hex": "04000402",
+      "size": 4
+    },
+    {
+      "address": 26851,
+      "name": ".gd_generated_000068e3",
+      "raw_hex": "07",
+      "size": 1
+    },
+    {
+      "address": 26852,
+      "name": ".gd_generated_000068e4",
+      "raw_hex": "0401",
+      "size": 2
+    },
+    {
+      "address": 26864,
+      "name": ".gd_generated_000068f0",
+      "raw_hex": "656e6473746f705f7374617465206f69643d256320686f6d696e673d2563206e6578745f636c6f636b3d25752070696e5f76616c75653d256300",
+      "size": 58
+    },
+    {
+      "address": 26922,
+      "name": ".gd_generated_0000692a",
+      "raw_hex": "616c6c6f635f6368756e6b206661696c656400",
+      "size": 19
+    },
+    {
+      "address": 26941,
+      "name": ".gd_generated_0000693d",
+      "raw_hex": "616c6c6f635f6368756e6b73206661696c656400",
+      "size": 20
+    },
+    {
+      "address": 26961,
+      "name": ".gd_generated_00006951",
+      "raw_hex": "6f69647320616c726561647920616c6c6f636174656400",
+      "size": 23
+    },
+    {
+      "address": 26984,
+      "name": ".gd_generated_00006968",
+      "raw_hex": "416c72656164792066696e616c697a656400",
+      "size": 18
+    },
+    {
+      "address": 27002,
+      "name": ".gd_generated_0000697a",
+      "raw_hex": "43616e27742061737369676e206f696400",
+      "size": 17
+    },
+    {
+      "address": 27019,
+      "name": ".gd_generated_0000698b",
+      "raw_hex": "414443206f7574206f662072616e676500",
+      "size": 17
+    },
+    {
+      "address": 27036,
+      "name": ".gd_generated_0000699c",
+      "raw_hex": "496e76616c6964206f6964207479706500",
+      "size": 17
+    },
+    {
+      "address": 27053,
+      "name": ".gd_generated_000069ad",
+      "raw_hex": "7570646174655f6469676974616c5f6f7574206e6f742076616c696420776974682061637469766520717565756500",
+      "size": 47
+    },
+    {
+      "address": 27100,
+      "name": ".gd_generated_000069dc",
+      "raw_hex": "43616e27742072657365742074696d65207768656e20737465707065722061637469766500",
+      "size": 37
+    },
+    {
+      "address": 27137,
+      "name": ".gd_generated_00006a01",
+      "raw_hex": "43616e277420616464207369676e616c207468617420697320616c72656164792061637469766500",
+      "size": 40
+    },
+    {
+      "address": 27177,
+      "name": ".gd_generated_00006a29",
+      "raw_hex": "496e76616c6964206d6f766520726571756573742073697a6500",
+      "size": 26
+    },
+    {
+      "address": 27203,
+      "name": ".gd_generated_00006a43",
+      "raw_hex": "43616e206e6f742073657420736f66742070776d206379636c65207469636b73207768696c6520757064617465732070656e64696e6700",
+      "size": 55
+    },
+    {
+      "address": 27258,
+      "name": ".gd_generated_00006a7a",
+      "raw_hex": "737465707065725f706f736974696f6e206f69643d256320706f733d256900",
+      "size": 31
+    },
+    {
+      "address": 27289,
+      "name": ".gd_generated_00006a99",
+      "raw_hex": "4e6f7420612076616c6964204144432070696e00",
+      "size": 20
+    },
+    {
+      "address": 27309,
+      "name": ".gd_generated_00006aad",
+      "raw_hex": "4e6f7420612076616c696420696e7075742070696e00",
+      "size": 22
+    },
+    {
+      "address": 27331,
+      "name": ".gd_generated_00006ac3",
+      "raw_hex": "4e6f7420616e206f75747075742070696e00",
+      "size": 18
+    },
+    {
+      "address": 27349,
+      "name": ".gd_generated_00006ad5",
+      "raw_hex": "5363686564756c6564206469676974616c206f7574206576656e742077696c6c20657863656564206d61785f6475726174696f6e00",
+      "size": 53
+    },
+    {
+      "address": 27402,
+      "name": ".gd_generated_00006b0a",
+      "raw_hex": "636f6e6669675f7265736574206f6e6c7920617661696c61626c65207768656e2073687574646f776e00",
+      "size": 42
+    },
+    {
+      "address": 27444,
+      "name": ".gd_generated_00006b34",
+      "raw_hex": "496e76616c696420636f756e7420706172616d6574657200",
+      "size": 24
+    },
+    {
+      "address": 27468,
+      "name": ".gd_generated_00006b4c",
+      "raw_hex": "706f6e6720646174613d252a7300",
+      "size": 14
+    },
+    {
+      "address": 27482,
+      "name": ".gd_generated_00006b5a",
+      "raw_hex": "627574746f6e735f7374617465206f69643d25632061636b5f636f756e743d25632073746174653d252a7300",
+      "size": 44
+    },
+    {
+      "address": 27526,
+      "name": ".gd_generated_00006b86",
+      "raw_hex": "6964656e746966795f726573706f6e7365206f66667365743d257520646174613d252e2a7300",
+      "size": 38
+    },
+    {
+      "address": 27564,
+      "name": ".gd_generated_00006bac",
+      "raw_hex": "4d6178206f66203820627574746f6e7300",
+      "size": 17
+    },
+    {
+      "address": 27581,
+      "name": ".gd_generated_00006bbd",
+      "raw_hex": "4d6973736564207363686564756c696e67206f66206e657874206469676974616c206f7574206576656e7400",
+      "size": 44
+    },
+    {
+      "address": 27625,
+      "name": ".gd_generated_00006be9",
+      "raw_hex": "53657420627574746f6e2070617374206d6178696d756d20627574746f6e20636f756e7400",
+      "size": 37
+    },
+    {
+      "address": 27662,
+      "name": ".gd_generated_00006c0e",
+      "raw_hex": "496e76616c696420627574746f6e732072657472616e736d697420636f756e7400",
+      "size": 33
+    },
+    {
+      "address": 27695,
+      "name": ".gd_generated_00006c2f",
+      "raw_hex": "52657363686564756c65642074696d657220696e20746865207061737400",
+      "size": 30
+    },
+    {
+      "address": 27725,
+      "name": ".gd_generated_00006c4d",
+      "raw_hex": "5374657070657220746f6f2066617220696e207061737400",
+      "size": 24
+    },
+    {
+      "address": 27749,
+      "name": ".gd_generated_00006c65",
+      "raw_hex": "436f6d6d616e64207265717565737400",
+      "size": 16
+    },
+    {
+      "address": 27765,
+      "name": ".gd_generated_00006c75",
+      "raw_hex": "70615f76616c75652076616c75653d257500",
+      "size": 18
+    },
+    {
+      "address": 27783,
+      "name": ".gd_generated_00006c87",
+      "raw_hex": "747273796e635f7374617465206f69643d25632063616e5f747269676765723d256320747269676765725f726561736f6e3d256320636c6f636b3d257500",
+      "size": 62
+    },
+    {
+      "address": 27845,
+      "name": ".gd_generated_00006cc5",
+      "raw_hex": "757074696d6520686967683d257520636c6f636b3d257500",
+      "size": 24
+    },
+    {
+      "address": 27869,
+      "name": ".gd_generated_00006cdd",
+      "raw_hex": "64656275675f726573756c742076616c3d257500",
+      "size": 20
+    },
+    {
+      "address": 27889,
+      "name": ".gd_generated_00006cf1",
+      "raw_hex": "737461747320636f756e743d25752073756d3d25752073756d73713d257500",
+      "size": 31
+    },
+    {
+      "address": 27920,
+      "name": ".gd_generated_00006d10",
+      "raw_hex": "47444d61696e626f61726420636c6f73653d25687520436c6f73655f6e756d3d2568752054656d705f77616b6574696d653d25687500",
+      "size": 54
+    },
+    {
+      "address": 27974,
+      "name": ".gd_generated_00006d46",
+      "raw_hex": "616e616c6f675f696e5f7374617465206f69643d2563206e6578745f636c6f636b3d25752076616c75653d25687500",
+      "size": 47
+    },
+    {
+      "address": 28021,
+      "name": ".gd_generated_00006d75",
+      "raw_hex": "636f6e6669672069735f636f6e6669673d2563206372633d25752069735f73687574646f776e3d2563206d6f76655f636f756e743d25687500",
+      "size": 57
+    },
+    {
+      "address": 28078,
+      "name": ".gd_generated_00006dae",
+      "raw_hex": "4d6f7665207175657565206f766572666c6f7700",
+      "size": 20
+    }
+  ]
+}

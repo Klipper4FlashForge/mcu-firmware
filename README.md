@@ -14,7 +14,7 @@ ships.** Not a lookalike, not a functional equivalent — the same bytes.
 | [levelBoard](mcu/levelBoard/) | N32G45x (reports `stm32f103xe`) | 128 MHz | 26,704 B | **done — 0 differing bytes** |
 | [eBoard](mcu/eBoard/) | `stm32f103xe` | 144 MHz | 43,580 B | not started |
 | [heaterBoard](mcu/heaterBoard/) | `stm32f103xe` | 144 MHz | 34,748 B | not started |
-| [mainBoardGD](mcu/mainBoardGD/) | `gd32h757zg` | 600 MHz | 45,552 B | not started |
+| [mainBoardGD](mcu/mainBoardGD/) | `gd32h757zg` | 600 MHz | 45,552 B | C recovery and isolated byte matches; full build pending |
 
 ## Verify it
 
@@ -61,7 +61,8 @@ Read [`.claude/skills/mcu-recovery/SKILL.md`](.claude/skills/mcu-recovery/SKILL.
 lever that closed its hard functions, and where the other boards start.
 eBoard and heaterBoard are the near targets: same family, same toolchain,
 everything pinned about GCC 10 transfers. `mainBoardGD` is a different job
-— GCC 7.3.1, and no GD32H7 port exists upstream.
+— no GD32H7 port exists upstream, and its own image proves it was built by
+armclang and armlink rather than by the GCC its dictionary names.
 
 ## Licence
 
